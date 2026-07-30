@@ -123,7 +123,7 @@ El cron opera sobre **cuotas**, no sobre créditos. Llama primero a `marcar_venc
 
 | Capa | Qué | Estado |
 |---|---|---|
-| Código | **GitHub** | repo por crear |
+| Código | **GitHub** — `alejogomezmdz14-hash/Lithium-` | conectado, `main` pusheado |
 | Deploy | **Vercel** | CLI 54.4.1 instalado y **logueado** (`alejogomezmdz14-hash`) |
 | Base de datos | **Supabase** (Postgres + RLS) | proyecto por crear · migración escrita, sin aplicar |
 | Auth | **Supabase Auth** — una sola usuaria (Candela, admin) | pendiente |
@@ -145,10 +145,18 @@ Gestor de paquetes: **pnpm** (hay `pnpm-workspace.yaml`, no usar npm).
 | `pnpm build` | build de producción |
 | `pnpm start` | servir el build |
 | `pnpm lint` | eslint |
+| `pnpm test` | corre todos los tests una vez (Vitest) |
+| `pnpm test:watch` | Vitest en watch |
+| `pnpm vitest run src/lib/money.test.ts` | **un solo archivo** |
+| `pnpm vitest run -t "el punto es separador de miles"` | **un solo test**, por nombre |
 
-Todavía **no hay runner de tests**. Al agregarlo (Vitest), documentar acá cómo correr **un solo test**.
+**Qué está testeado y por qué:** `src/lib/money.ts` y `src/lib/fecha.ts` son las dos únicas piezas donde un bug cuesta plata de verdad. Los dos casos que no se pueden romper nunca:
 
-> **Next.js 16 no es el Next.js que conocés.** Hay breaking changes respecto de los datos de entrenamiento: APIs, convenciones y estructura de archivos pueden diferir. **Leer la guía correspondiente en `node_modules/next/dist/docs/` antes de escribir código** y hacer caso a los avisos de deprecación. (Lo mismo dice `AGENTS.md`, que genera el propio scaffold.)
+- `parseARS("86.666") === 86666` — ochenta y seis mil, no 86 con 666.
+- `hoyEnBA()` devuelve `2026-07-30` cuando en UTC ya es `2026-07-31` (23:00 de Argentina).
+- Y el invariante de `repartirMonto()`: la suma de las cuotas es **exactamente** el total, barrido sobre cientos de combinaciones.
+
+> **Next.js 16 no es el Next.js que conocés.** Hay breaking changes respecto de los datos de entrenamiento: APIs, convenciones y estructura de archivos pueden diferir. Hacer caso a los avisos de deprecación. **Ojo:** el `AGENTS.md` que genera el scaffold manda a leer `node_modules/next/dist/docs/`, pero **esa carpeta no existe** en esta instalación — verificar contra la doc online antes de dar una API por buena.
 
 ## 7. Reglas del proyecto
 - UI en español rioplatense (voseo).

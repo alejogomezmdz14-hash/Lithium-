@@ -1,26 +1,94 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ---------------------------------------------------------------------------
+   Lithium — tokens. Ver CLAUDE.md §9.1.
+   La app es DARK PERMANENTE: no hay theme claro, así que los valores viven
+   directo en :root. La clase .dark se replica solo para que los componentes de
+   shadcn que la consultan se comporten igual.
+   Nunca poner un hex suelto en un componente — siempre un token de acá.
+--------------------------------------------------------------------------- */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* --- superficies ------------------------------------------------------- */
+  /* Tintado, no gris neutro: el ramp perfectamente neutro es firma de theme generado */
+  --color-background: #0a0a0c;
+  --color-foreground: #fafafa;
+
+  --color-card: #1c1c20; /* nivel 1: filas, tiles */
+  --color-card-foreground: #fafafa;
+  --color-surface-raised: #26262b; /* nivel 2: hover, fila levantada, sheet */
+  --color-popover: #26262b;
+  --color-popover-foreground: #fafafa;
+
+  --color-border: #2e2e35; /* solo contenedores que agrupan y sheets */
+  --color-input: #2e2e35;
+
+  /* --- texto ------------------------------------------------------------- */
+  --color-muted: #26262b;
+  --color-muted-foreground: #a3a3a3; /* metadata legible — 7.8:1 */
+  --color-muted-subtle: #6e6e6e; /* adorno real: separadores ·, placeholders */
+  --color-disabled-foreground: #5a5a5a;
+
+  /* --- acento de marca (§9.0.2) ------------------------------------------ */
+  /* primary es SOLO relleno: 3.5:1, prohibido para texto sobre el canvas */
+  --color-primary: #1d63d2;
+  --color-primary-foreground: #ffffff; /* 5.3:1 sobre primary */
+  --color-primary-text: #35c4d4; /* cian: links, tab activo, glyphs — 9.4:1 */
+  --color-primary-tint: #0f2440; /* fondo de círculos de acción */
+  --color-ring: #35c4d4;
+
+  --color-secondary: #26262b;
+  --color-secondary-foreground: #fafafa;
+  --color-accent: #26262b;
+  --color-accent-foreground: #fafafa;
+
+  /* --- señales (§9.2, §9.3) ---------------------------------------------- */
+  /* danger y destructive son rojos DISTINTOS a propósito: urgencia vs borrar */
+  --color-danger: #fca5a5; /* único rojo de urgencia — 10.4:1 */
+  --color-danger-surface: #2a1215;
+  --color-destructive: #f87171; /* borrar — 7.2:1 */
+  --color-destructive-foreground: #0a0a0c;
+  --color-warning: #f59e0b; /* "Ojo" y "pagó tarde" — 9.2:1 */
+  --color-success: #34d399; /* "Confiable" y el ✓ — 10.3:1. NUNCA en un monto */
+
+  /* --- radius: clase de objeto, nunca uniforme --------------------------- */
+  --radius-sm: 0.5rem; /* 8px  — skeleton */
+  --radius-lg: 0.875rem; /* 14px — inputs, controles */
+  --radius-xl: 1.3125rem; /* 21px — cards, sheets */
+
+  /* --- tipografía (§9.1) -------------------------------------------------- */
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+.dark {
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    /* El cuerpo va en 500, nunca 400: en dark el 400 adelgaza y se ve barato */
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Toda cifra es tabular — montos, fechas (12/8) y contadores (3/6).
+     Sin esto los números bailan entre renders y la lista se ve temblorosa. */
+  .tabular,
+  [data-tabular] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Focus que se ve de verdad (§9.7) */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
 }
