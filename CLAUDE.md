@@ -125,7 +125,7 @@ El cron opera sobre **cuotas**, no sobre créditos. Llama primero a `marcar_venc
 |---|---|---|
 | Código | **GitHub** — `alejogomezmdz14-hash/Lithium-` | conectado, `main` pusheado |
 | Deploy | **Vercel** | CLI 54.4.1 instalado y **logueado** (`alejogomezmdz14-hash`) |
-| Base de datos | **Supabase** (Postgres + RLS) | proyecto por crear · migración escrita, sin aplicar |
+| Base de datos | **Supabase** — `tfmywihnocwsszaawpbb` | proyecto creado · migración escrita, **sin aplicar** |
 | Auth | **Supabase Auth** — una sola usuaria (Candela, admin) | pendiente |
 | Framework | **Next.js 16.2** App Router + React 19.2 + Tailwind 4.3 + shadcn | scaffold hecho |
 | Cron de alertas | **n8n** | MCP conectado |
@@ -134,6 +134,10 @@ El cron opera sobre **cuotas**, no sobre créditos. Llama primero a `marcar_venc
 **Herramientas en la máquina:** node 22.20 · npm 10.9 · pnpm 10.33 · git 2.54 · vercel 54.4.1. **Faltan:** `gh` (GitHub CLI) y el CLI de `supabase`.
 
 **Regla de entornos:** las claves van por `vercel env` y se bajan con `vercel env pull`. Nunca un `.env` commiteado, nunca la `service_role` key en el bundle del cliente — solo `NEXT_PUBLIC_SUPABASE_URL` y la `anon` key llegan al browser; el resto vive server-side.
+
+- `.env.local` — valores reales, **gitignoreado** (`.env*`). `.env.example` — la plantilla sin valores, sí commiteada (excepción `!.env.example`).
+- `src/lib/env.ts` valida al importar y **tira error si falta una key**, en vez de dejar que reviente después como un 401 confuso. Consecuencia: **Vercel necesita las env vars cargadas antes del primer deploy**, o el build falla. Es a propósito.
+- Los clientes de Supabase viven en `src/lib/supabase/`: `client.ts` (browser) y `server.ts` (RSC / actions / route handlers, con `cookies()` async de Next 15+).
 
 ### 6.1 Comandos
 
