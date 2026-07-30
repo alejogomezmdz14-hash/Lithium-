@@ -153,6 +153,11 @@ Gestor de paquetes: **pnpm** (hay `pnpm-workspace.yaml`, no usar npm).
 | `pnpm test:watch` | Vitest en watch |
 | `pnpm vitest run src/lib/money.test.ts` | **un solo archivo** |
 | `pnpm vitest run -t "el punto es separador de miles"` | **un solo test**, por nombre |
+| `pnpm db:migrate` | aplica las migraciones pendientes de `supabase/migrations/` |
+| `pnpm db:migrate:dry` | lista qué se aplicaría, sin tocar la base |
+| `pnpm db:verify` | 40 chequeos funcionales contra la base real (crea y borra datos de prueba) |
+
+**Migraciones:** las corre `scripts/migrate.mjs` contra `SUPABASE_DB_URL` (de `.env.local`). Cada archivo va **dentro de una transacción** — si falla, no queda la base a medio migrar — y se registra en la tabla `_migraciones` para no reaplicarlo. Usar la conexión **directa o el session pooler**; el transaction pooler (puerto 6543) no maneja bien este DDL.
 
 **Qué está testeado y por qué:** `src/lib/money.ts` y `src/lib/fecha.ts` son las dos únicas piezas donde un bug cuesta plata de verdad. Los dos casos que no se pueden romper nunca:
 
@@ -170,7 +175,7 @@ Gestor de paquetes: **pnpm** (hay `pnpm-workspace.yaml`, no usar npm).
 - La lógica derivada (semáforo, estado, cantidad de cuotas) vive en **SQL**, no en TypeScript.
 
 ## 8. Primeros pasos
-1. **Schema — migración escrita, SIN APLICAR** en `supabase/migrations/20260729000000_init.sql`. Falta autorizar **Supabase** en los conectores de claude.ai para poder aplicarla. **Nunca se ejecutó**: puede saltar algo de sintaxis la primera vez. Auth (Candela admin) pendiente.
+1. ~~Schema~~ **APLICADO y verificado** contra la base real (`tfmywihnocwsszaawpbb`). `pnpm db:verify` corre 40 chequeos funcionales — semáforo, trigger, cobro parcial, constraints, idempotencia de alertas y RLS — creando datos de prueba y borrándolos al final. **Correrlo después de tocar la migración.** Falta el Auth (Candela admin).
 2. ~~Scaffold Next.js~~ **hecho** (Next 16.2 + React 19.2 + Tailwind 4.3, `src/`, App Router, alias `@/*`).
 3. ABM de clientes y préstamos + registro de pagos. **Los pagos van siempre por `registrar_pago()`** — nunca un `UPDATE` a `cuotas` desde la app.
 4. ~~Cálculo del semáforo (auto)~~ **hecho en SQL** (`recalcular_semaforo` + `trg_sync_desde_cuotas`). Falta el override manual en la UI.
