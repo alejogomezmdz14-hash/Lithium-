@@ -19,6 +19,12 @@ export async function createClient() {
       getAll() {
         return cookieStore.getAll();
       },
+      // `setAll` recibe un 2º argumento `headers` con los anti-caché
+      // (`Cache-Control: private, no-store`, `Expires: 0`). Acá se ignora a
+      // propósito: la API `cookies()` de Next no permite setear headers de
+      // respuesta. Quien los aplica es `src/proxy.ts`, que es donde ocurre el
+      // refresh de token en la práctica. No "arreglar" esto agregando headers
+      // acá — no hay dónde ponerlos.
       setAll(cookiesToSet) {
         try {
           for (const { name, value, options } of cookiesToSet) {
@@ -26,7 +32,7 @@ export async function createClient() {
           }
         } catch {
           // Desde un Server Component no se pueden escribir cookies. Es
-          // esperable: el refresh de sesión lo hace el middleware.
+          // esperable: el refresh de sesión lo hace el proxy.
         }
       },
     },

@@ -174,6 +174,13 @@ Gestor de paquetes: **pnpm** (hay `pnpm-workspace.yaml`, no usar npm).
 - **Corre en runtime Node.js por defecto**, y setear `runtime` adentro **tira error**.
 - Codemod si aparece código viejo: `npx @next/codemod@canary middleware-to-proxy .`
 
+**Dos trampas del proxy + Supabase, ya resueltas en `src/proxy.ts`. No revertirlas:**
+
+1. **`setAll(cookies, headers)` recibe un SEGUNDO argumento.** Son los anti-caché (`Cache-Control: private, no-store`, `Expires: 0`). Ignorarlos deja que un CDN —Vercel, justamente— cachee una respuesta con un `Set-Cookie` de sesión **y se la sirva a otra persona**. Lo dice el tipo de `@supabase/ssr`, no es cosmético. En `src/lib/supabase/server.ts` se ignoran a propósito porque la API `cookies()` de Next no permite setear headers; ahí no hay nada que arreglar.
+2. **Al redirigir hay que arrastrar las cookies y esos headers.** `NextResponse.redirect()` devuelve una respuesta nueva y pelada: si el token se acababa de refrescar, se pierde ahí y la sesión muere en la navegación siguiente.
+
+**`getUser()`, no `getClaims()`.** La doc de auth-js recomienda `getClaims()` para ahorrarse un round-trip por navegación, pero eso **solo funciona con signing keys asimétricas**. Este proyecto usa la key legacy HS256 (`eyJ...`), así que `getClaims()` iría a la red igual, sin beneficio. Reevaluar solo si se migra a claves asimétricas.
+
 ## 7. Reglas del proyecto
 - UI en español rioplatense (voseo).
 - El **semáforo es CREDITICIO** (¿le presto de nuevo?), NO el estado de cobro. El estado de cobro vive en la vista "por pagar".
