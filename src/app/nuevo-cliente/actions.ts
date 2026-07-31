@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { REQUISITOS } from "@/lib/documentacion";
 import { createClient } from "@/lib/supabase/server";
+
+const TIPOS_VALIDOS = new Set(Object.keys(REQUISITOS));
 
 export type EstadoNuevoCliente = { error: string | null };
 
@@ -23,13 +26,24 @@ export async function crearCliente(
   const nombre = String(datos.get("nombre") ?? "").trim();
   const telefono = String(datos.get("telefono") ?? "").trim();
   const notas = String(datos.get("notas") ?? "").trim();
+  const tipo = String(datos.get("tipo") ?? "").trim();
+  const garanteNombre = String(datos.get("garante_nombre") ?? "").trim();
+  const garanteTelefono = String(datos.get("garante_telefono") ?? "").trim();
 
   if (nombre.length < 2) return { error: "Escribí el nombre de la persona." };
+  if (tipo && !TIPOS_VALIDOS.has(tipo)) return { error: "Ese tipo de cliente no existe." };
 
   const { error } = await supabase.from("clientes").insert({
     nombre,
     telefono: telefono || null,
     notas: notas || null,
+    // El tipo puede quedar vacío: define qué papeles pedirle, no si se puede
+    // cargar. Frenar un alta parada en la puerta de la casa por una
+    // clasificación sería exactamente el tipo de fricción que §9.0 prohíbe.
+    tipo: tipo || null,
+    // Siempre opcionales, también para PAMI (§10).
+    garante_nombre: garanteNombre || null,
+    garante_telefono: garanteTelefono || null,
   });
 
   if (error) return { error: `No se pudo guardar: ${error.message}` };

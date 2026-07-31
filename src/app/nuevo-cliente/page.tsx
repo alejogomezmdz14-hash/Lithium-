@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+
+import { NOMBRE_TIPO_CLIENTE, REQUISITOS, type TipoCliente } from "@/lib/documentacion";
 
 import { crearCliente, type EstadoNuevoCliente } from "./actions";
 
@@ -10,8 +12,13 @@ const INICIAL: EstadoNuevoCliente = { error: null };
 const campo =
   "h-12 w-full rounded-lg border border-border bg-card px-4 text-base text-foreground placeholder:text-muted-subtle disabled:opacity-60";
 
+const TIPOS = Object.keys(NOMBRE_TIPO_CLIENTE) as TipoCliente[];
+
 export default function NuevoClientePage() {
   const [estado, accion, enviando] = useActionState(crearCliente, INICIAL);
+  const [tipo, setTipo] = useState<TipoCliente | "">("");
+
+  const requisitos = tipo ? REQUISITOS[tipo] : [];
 
   return (
     <main className="mx-auto w-full max-w-md px-5 pb-16 pt-8">
@@ -30,6 +37,8 @@ export default function NuevoClientePage() {
       </p>
 
       <form action={accion} className="flex flex-col gap-5">
+        <input type="hidden" name="tipo" value={tipo} />
+
         <div className="flex flex-col gap-1">
           <label htmlFor="nombre" className="text-[0.9375rem] font-semibold text-foreground">
             ¿Cómo se llama?
@@ -65,6 +74,76 @@ export default function NuevoClientePage() {
             className={`${campo} mt-1`}
           />
         </div>
+
+        {/* El tipo define qué papeles pedirle. Se puede dejar sin elegir: frenar
+            un alta por una clasificación sería fricción de más (§9.0). */}
+        <fieldset className="flex flex-col gap-1">
+          <legend className="text-[0.9375rem] font-semibold text-foreground">¿De qué vive?</legend>
+          <p className="text-[0.8125rem] font-medium text-muted-foreground">
+            Define qué papeles hay que pedirle. Lo podés dejar para después.
+          </p>
+
+          <div className="mt-2 flex flex-wrap gap-2">
+            {TIPOS.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTipo(tipo === t ? "" : t)}
+                disabled={enviando}
+                className={`h-12 rounded-full px-4 text-[0.8125rem] font-semibold ${
+                  tipo === t ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"
+                }`}
+              >
+                {NOMBRE_TIPO_CLIENTE[t]}
+              </button>
+            ))}
+          </div>
+
+          {/* Decir qué papeles va a pedir ANTES de guardar: así sabe qué tiene
+              que juntar mientras la persona está enfrente. */}
+          {requisitos.length > 0 ? (
+            <div className="mt-3 rounded-xl bg-card p-4">
+              <p className="text-[0.8125rem] font-medium text-muted-foreground">
+                Le vas a tener que pedir:
+              </p>
+              <ul className="mt-2 flex flex-col gap-1">
+                {requisitos.map((r) => (
+                  <li key={r.tipo} className="text-[0.8125rem] font-medium text-foreground">
+                    · {r.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </fieldset>
+
+        {/* El garante aparece solo en PAMI, que es donde se pide — pero los
+            campos NUNCA son obligatorios. */}
+        {tipo === "pami" ? (
+          <fieldset className="flex flex-col gap-1 rounded-xl bg-card p-4">
+            <legend className="px-1 text-[0.9375rem] font-semibold text-foreground">
+              El garante
+            </legend>
+            <p className="text-[0.8125rem] font-medium text-muted-foreground">
+              Opcional, pero si algún día hay que reclamarle vas a necesitar el teléfono.
+            </p>
+            <input
+              name="garante_nombre"
+              autoCapitalize="words"
+              disabled={enviando}
+              placeholder="Nombre del garante"
+              className={`${campo} mt-2 bg-background`}
+            />
+            <input
+              name="garante_telefono"
+              type="tel"
+              inputMode="tel"
+              disabled={enviando}
+              placeholder="Su teléfono"
+              className={`${campo} mt-2 bg-background`}
+            />
+          </fieldset>
+        ) : null}
 
         <div className="flex flex-col gap-1">
           <label htmlFor="notas" className="text-[0.9375rem] font-semibold text-foreground">
