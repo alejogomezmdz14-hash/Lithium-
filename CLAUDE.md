@@ -165,7 +165,14 @@ Gestor de paquetes: **pnpm** (hay `pnpm-workspace.yaml`, no usar npm).
 - `hoyEnBA()` devuelve `2026-07-30` cuando en UTC ya es `2026-07-31` (23:00 de Argentina).
 - Y el invariante de `repartirMonto()`: la suma de las cuotas es **exactamente** el total, barrido sobre cientos de combinaciones.
 
-> **Next.js 16 no es el Next.js que conocés.** Hay breaking changes respecto de los datos de entrenamiento: APIs, convenciones y estructura de archivos pueden diferir. Hacer caso a los avisos de deprecación. **Ojo:** el `AGENTS.md` que genera el scaffold manda a leer `node_modules/next/dist/docs/`, pero **esa carpeta no existe** en esta instalación — verificar contra la doc online antes de dar una API por buena.
+> **Next.js 16 no es el Next.js que conocés.** Hay breaking changes respecto de los datos de entrenamiento. **La doc completa está en `node_modules/next/dist/docs/`** — leerla ahí antes de escribir código, es la fuente de verdad de la versión exacta instalada y le gana a cualquier recuerdo.
+
+**Cambio de Next 16 que ya nos tocó:** el archivo `middleware.ts` **está deprecado y se renombró a `proxy.ts`** (`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`).
+
+- Va en `src/proxy.ts`, al mismo nivel que `app/`.
+- La función se exporta como `proxy` (nombrada) o como default. `export const config = { matcher }` sigue igual.
+- **Corre en runtime Node.js por defecto**, y setear `runtime` adentro **tira error**.
+- Codemod si aparece código viejo: `npx @next/codemod@canary middleware-to-proxy .`
 
 ## 7. Reglas del proyecto
 - UI en español rioplatense (voseo).
