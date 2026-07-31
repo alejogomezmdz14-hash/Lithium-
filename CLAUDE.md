@@ -254,10 +254,20 @@ Las palabras son lo único que Candela lee de verdad. Esta lista es **normativa*
 | `estado = pagado` | **cobrada el 12/7** | pagada, saldada |
 | `estado = pendiente` | **vence el viernes 12/8** | pendiente, open |
 | semáforo | **Confiable · Ojo · Mal pagador · Nuevo** | No prestar, score, riesgo |
-| `notas` | **Lo que sabés de esta persona** | notas, observaciones |
+| `notas` | **Observaciones** | — |
+| `clientes.tipo` | **Tipo de cliente** | "¿De qué vive?" y cualquier otra pregunta coloquial |
+
+**El registro depende del contexto — corregido el 2026-07-31 a pedido del cliente:**
+
+| Dónde | Registro | Ejemplo |
+|---|---|---|
+| **Acciones y avisos** | voseo directo | `Cobrá`, `Ya me pagó`, `Estás al día` |
+| **Etiquetas de formulario y datos** | **neutro y profesional** | `Nombre y apellido`, `Tipo de cliente`, `Observaciones`, `Garante` |
+
+La primera versión preguntaba `¿De qué vive?` y `¿Cómo se llama?`. Sonaba a interrogatorio y quedaba **demasiado informal para un formulario donde se cargan datos de un tercero**. Los botones y los avisos siguen en voseo; **los campos de un formulario se nombran, no se preguntan.**
 
 - **Sentence case** en botones y títulos: `Nuevo préstamo`, nunca `Nuevo Préstamo`.
-- **Voseo imperativo** consistente: `Cobrá`, `Registrá`, `Elegí`. Nunca mezclar `Cobra`/`Cobrar` en la misma pantalla.
+- **Voseo imperativo** consistente en las acciones: `Cobrá`, `Registrá`, `Elegí`. Nunca mezclar `Cobra`/`Cobrar` en la misma pantalla.
 - La plata siempre va con dirección y en segunda persona: **`Te tiene que pagar $X`**, nunca `Debe $X`. En Lithium la plata siempre viaja hacia Candela; "debe" y "le debe" son ambiguos, y esa ambigüedad se paga con una llamada mal hecha.
 
 ### 9.0.2 Marca

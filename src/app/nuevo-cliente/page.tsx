@@ -33,7 +33,7 @@ export default function NuevoClientePage() {
         Cliente nuevo
       </h1>
       <p className="mb-8 mt-1 text-[0.8125rem] font-medium text-muted-foreground">
-        Con el nombre alcanza. El resto lo podés completar después.
+        Con el nombre alcanza para guardarlo. El resto se puede completar después.
       </p>
 
       <form action={accion} className="flex flex-col gap-5">
@@ -41,7 +41,7 @@ export default function NuevoClientePage() {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="nombre" className="text-[0.9375rem] font-semibold text-foreground">
-            ¿Cómo se llama?
+            Nombre y apellido
           </label>
           <input
             id="nombre"
@@ -78,9 +78,9 @@ export default function NuevoClientePage() {
         {/* El tipo define qué papeles pedirle. Se puede dejar sin elegir: frenar
             un alta por una clasificación sería fricción de más (§9.0). */}
         <fieldset className="flex flex-col gap-1">
-          <legend className="text-[0.9375rem] font-semibold text-foreground">¿De qué vive?</legend>
+          <legend className="text-[0.9375rem] font-semibold text-foreground">Tipo de cliente</legend>
           <p className="text-[0.8125rem] font-medium text-muted-foreground">
-            Define qué papeles hay que pedirle. Lo podés dejar para después.
+            Determina qué documentación hay que pedirle. Se puede completar después.
           </p>
 
           <div className="mt-2 flex flex-wrap gap-2">
@@ -104,7 +104,7 @@ export default function NuevoClientePage() {
           {requisitos.length > 0 ? (
             <div className="mt-3 rounded-xl bg-card p-4">
               <p className="text-[0.8125rem] font-medium text-muted-foreground">
-                Le vas a tener que pedir:
+                Documentación a presentar:
               </p>
               <ul className="mt-2 flex flex-col gap-1">
                 {requisitos.map((r) => (
@@ -121,11 +121,9 @@ export default function NuevoClientePage() {
             campos NUNCA son obligatorios. */}
         {tipo === "pami" ? (
           <fieldset className="flex flex-col gap-1 rounded-xl bg-card p-4">
-            <legend className="px-1 text-[0.9375rem] font-semibold text-foreground">
-              El garante
-            </legend>
+            <legend className="px-1 text-[0.9375rem] font-semibold text-foreground">Garante</legend>
             <p className="text-[0.8125rem] font-medium text-muted-foreground">
-              Opcional, pero si algún día hay que reclamarle vas a necesitar el teléfono.
+              Opcional. Si alguna vez hay que reclamarle, vas a necesitar el teléfono.
             </p>
             <input
               name="garante_nombre"
@@ -147,10 +145,10 @@ export default function NuevoClientePage() {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="notas" className="text-[0.9375rem] font-semibold text-foreground">
-            Lo que sepas de esta persona
+            Observaciones
           </label>
           <p className="text-[0.8125rem] font-medium text-muted-foreground">
-            Aparece en la lista de cobros. Sirve para lo que cambia cómo cobrarle.
+            Aparecen en la lista de cobros. Para lo que cambia cómo cobrarle.
           </p>
           <textarea
             id="notas"
