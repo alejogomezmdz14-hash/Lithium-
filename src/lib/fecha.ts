@@ -31,6 +31,24 @@ export function diasEntre(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / MS_POR_DIA);
 }
 
+const fmtDiaSemana = new Intl.DateTimeFormat("es-AR", {
+  timeZone: "UTC",
+  weekday: "long",
+  day: "numeric",
+  month: "numeric",
+});
+
+/**
+ * `"2026-08-12"` → `"miércoles 12/8"`.
+ *
+ * Siempre con día de la semana: Candela organiza por "el viernes", no por
+ * "12/8" (§9.5). Se fuerza `timeZone: UTC` porque la fecha ya viene como día
+ * calendario puro — sin eso, el navegador la correría un día.
+ */
+export function fechaConDia(iso: string): string {
+  return fmtDiaSemana.format(new Date(`${iso}T00:00:00Z`)).replace(",", "");
+}
+
 export type EstadoCuotaUI =
   | "cobrada_a_tiempo"
   | "cobrada_tarde"
