@@ -9,7 +9,7 @@ export const metadata = { title: "Por pagar — Lithium" };
 
 /** El home ES "Por pagar" (§9.0): lo primero que ve al desbloquear el teléfono. */
 export default async function PorPagar() {
-  const { hoy, grupos, proximo, error } = await traerPorPagar();
+  const { hoy, grupos, proximo, despuesDeLaSemana, error } = await traerPorPagar();
 
   return (
     <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-8">
@@ -31,9 +31,10 @@ export default async function PorPagar() {
         </div>
       )}
 
-      {grupos.length > 0 && proximo ? (
+      {grupos.length > 0 && despuesDeLaSemana ? (
         <p className="mt-8 text-[0.8125rem] font-medium text-muted-foreground">
-          Después de esta semana, el próximo es el {fechaConDia(proximo.fecha_cobro)}.
+          Después de esta semana, el próximo es el {fechaConDia(despuesDeLaSemana.fecha_cobro)} —{" "}
+          {despuesDeLaSemana.nombre}.
         </p>
       ) : null}
     </main>

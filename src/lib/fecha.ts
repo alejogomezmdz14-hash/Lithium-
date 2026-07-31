@@ -31,22 +31,42 @@ export function diasEntre(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / MS_POR_DIA);
 }
 
-const fmtDiaSemana = new Intl.DateTimeFormat("es-AR", {
-  timeZone: "UTC",
-  weekday: "long",
-  day: "numeric",
-  month: "numeric",
-});
+/** Primer día del mes de `iso`. `"2026-07-31"` → `"2026-07-01"`. */
+export function inicioDeMes(iso: string): string {
+  return `${iso.slice(0, 7)}-01`;
+}
+
+/** Nombre del mes en curso: `"julio"`. Para titular el bloque del resumen. */
+export function nombreDeMes(iso: string): string {
+  return new Intl.DateTimeFormat("es-AR", { timeZone: "UTC", month: "long" }).format(
+    new Date(`${iso}T00:00:00Z`),
+  );
+}
+
+/** `iso` sumado en días, en calendario puro. */
+export function sumarDias(iso: string, dias: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+const fmtDiaSemana = new Intl.DateTimeFormat("es-AR", { timeZone: "UTC", weekday: "long" });
 
 /**
  * `"2026-08-12"` → `"miércoles 12/8"`.
  *
  * Siempre con día de la semana: Candela organiza por "el viernes", no por
- * "12/8" (§9.5). Se fuerza `timeZone: UTC` porque la fecha ya viene como día
- * calendario puro — sin eso, el navegador la correría un día.
+ * "12/8" (§9.5).
+ *
+ * El día y el mes se arman a mano en vez de dejárselos a `Intl`: pidiéndole
+ * `weekday + day + month` junto, el ICU elige su propio patrón y devuelve
+ * `"lunes, 3-8"` con guion. El separador de fecha en Argentina es la barra y no
+ * puede depender de la versión de ICU del celular.
  */
 export function fechaConDia(iso: string): string {
-  return fmtDiaSemana.format(new Date(`${iso}T00:00:00Z`)).replace(",", "");
+  const diaSemana = fmtDiaSemana.format(new Date(`${iso}T00:00:00Z`));
+  const [, mes, dia] = iso.split("-");
+  return `${diaSemana} ${Number(dia)}/${Number(mes)}`;
 }
 
 export type EstadoCuotaUI =

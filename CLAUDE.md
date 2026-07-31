@@ -216,7 +216,17 @@ Tests concretos, no aspiraciones:
 - Confirmación **solo** en lo irreversible (borrar). Todo lo demás con **deshacer**.
 - Si una pantalla necesita que se la expliquen, se rediseña la pantalla.
 
-**Navegación — decidido, no reabrir.** Tres tabs en barra inferior sticky: `Por pagar` · `Clientes` · `Resumen`. **`/` = Por pagar. Es el home.** Es lo que ella abre; la lista de a quién correr hoy tiene que estar en pantalla al desbloquear el teléfono, sin tocar nada.
+**Navegación — decidido, no reabrir.** Tres tabs en barra inferior sticky, en este orden: **`Resumen` · `Por pagar` · `Clientes`**. La app se vive **por módulos**: cada tab responde una pregunta distinta y ninguna pantalla mezcla las tres.
+
+| Ruta | Módulo | La pregunta que responde |
+|---|---|---|
+| `/` | **Resumen** | ¿Cómo viene el mes? Cuánto puse en la calle, cuánto me deben, cuánto está vencido |
+| `/por-pagar` | **Por pagar** | ¿A quién tengo que correr hoy? |
+| `/clientes` | **Clientes** | ¿A quién le puedo prestar de nuevo? |
+
+**El home es `Resumen`, no `Por pagar`** — corregido el 2026-07-31 a pedido del cliente. La versión anterior de esta sección ponía la lista de cobros como home; en la práctica se leía como una lista tirada sin contexto. El Resumen abre con los números del mes y **abajo la deuda pendiente por persona**, con link a la lista completa.
+
+`/login` y `/cobrar/[id]` viven **afuera** del shell: son pantallas de tarea única y la navegación ahí solo distrae mientras se registra plata.
 
 Los círculos de acción **solo contienen acciones, nunca destinos**, y no pesan igual: `Ya me pagó` ocupa el doble de ancho y va solo en su fila; abajo, más chicos, `Nuevo préstamo` y `Nuevo cliente`. "Por pagar" no es una acción — es la pantalla donde ya estás. `Ya me pagó` desde el home no abre una cadena de dropdowns: abre la lista buscable de cuotas impagas, con la misma fila y la misma acción que "Por pagar". Un componente, un camino de código. Nunca hay una tercera capa de navegación.
 
@@ -401,11 +411,11 @@ HOY · 2 personas · $95.000 ─────────────────
 
 Candela es una persona sola, no un equipo de finanzas: **pocos números, grandes, con aire**. Un solo número héroe. Nada de grilla de 4 KPIs. Un tile 2-up asimétrico arriba y abajo una lista:
 
-1. **`Me deben`** — héroe, 34px, `foreground`, `tabular-nums`, tracking `-0.02em`.
-2. **`Vencido`** — 22px. **Se cuenta en personas:** `$180.000 · 4 cuotas de 3 personas`. Ella cuenta gente, no créditos.
-3. **`Puse en la calle`** `$2.400.000` y debajo, en `muted-foreground`, `Tengo que cobrar $3.100.000`. **Los dos números a la vez, sin toggle** — la diferencia entre ambos ES el interés y no hace falta explicarla.
-4. **`Cobro esta semana`**.
-5. **`Quién me debe`** — lista **completa** con scroll, ordenada por deuda desc.
+1. **`Me deben`** — héroe, 34px, `foreground`, `tabular-nums`, tracking `-0.02em`. Va en el 2-up asimétrico con `Vencido`.
+2. **`Vencido`** — 22px. **Se cuenta en personas** (`3 personas`), no en créditos: ella cuenta gente.
+3. **`Prestaste en {mes}`** — el capital que salió a la calle **este mes**, y debajo el desglose **`Con interés` / `Sin interés`** más `Vas a ganar de interés`. **Los tres números a la vez, sin toggle**: un pill que hay que acordarse de haber tocado es un código a aprender.
+4. **`Cobrás esta semana`** — es un link a `/por-pagar`.
+5. **`Quién me debe`** — lista **completa** con scroll, ordenada por deuda desc. Esto es "las deudas pendientes abajo del dashboard".
 
 **Descartado el segmented control `Con interés` / `Sin interés`:** hacía que el número más grande de la pantalla cambiara de significado según un pill que ella tiene que acordarse de haber tocado. Eso es literalmente "aprender un código", prohibido en el primer bullet de §9.0. Y `con_interes` es la columna del schema, no su palabra.
 

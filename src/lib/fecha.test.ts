@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { diasEntre, estadoCuotaUI, hoyEnBA, laQueSigue } from "./fecha";
+import {
+  diasEntre,
+  estadoCuotaUI,
+  fechaConDia,
+  hoyEnBA,
+  inicioDeMes,
+  laQueSigue,
+  sumarDias,
+} from "./fecha";
 
 describe("hoyEnBA", () => {
   it("EL bug del huso: a las 23:00 de Argentina en UTC ya es manana", () => {
@@ -17,6 +25,34 @@ describe("hoyEnBA", () => {
   it("al mediodia de Argentina coincide con UTC", () => {
     const mediodia = new Date("2026-07-30T15:00:00Z"); // 12:00 ART
     expect(hoyEnBA(mediodia)).toBe(mediodia.toISOString().slice(0, 10));
+  });
+});
+
+describe("fechaConDia", () => {
+  it("usa BARRA, no guion: el ICU con weekday+day+month devuelve '3-8'", () => {
+    expect(fechaConDia("2026-08-03")).toBe("lunes 3/8");
+    expect(fechaConDia("2026-08-12")).toBe("miércoles 12/8");
+  });
+
+  it("no rellena con ceros: '3/8', no '03/08'", () => {
+    expect(fechaConDia("2026-01-05")).toBe("lunes 5/1");
+  });
+
+  it("no corre un dia por huso horario", () => {
+    expect(fechaConDia("2026-12-31")).toContain("31/12");
+  });
+});
+
+describe("inicioDeMes / sumarDias", () => {
+  it("inicioDeMes recorta al primero", () => {
+    expect(inicioDeMes("2026-07-31")).toBe("2026-07-01");
+    expect(inicioDeMes("2026-01-01")).toBe("2026-01-01");
+  });
+
+  it("sumarDias cruza meses y anios", () => {
+    expect(sumarDias("2026-07-31", 7)).toBe("2026-08-07");
+    expect(sumarDias("2026-12-31", 1)).toBe("2027-01-01");
+    expect(sumarDias("2026-03-01", -1)).toBe("2026-02-28");
   });
 });
 
