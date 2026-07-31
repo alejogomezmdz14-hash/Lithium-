@@ -32,7 +32,7 @@ export default async function ClientesPage() {
   const totalDeuda = clientes.reduce((suma, c) => suma + c.debe, 0);
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-8">
+    <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-[1.0625rem] font-semibold tracking-[-0.01em] text-foreground">

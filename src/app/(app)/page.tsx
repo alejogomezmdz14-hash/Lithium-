@@ -13,7 +13,7 @@ export default async function ResumenPage() {
 
   if (error || !resumen) {
     return (
-      <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-8">
+      <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-5">
         <h1 className="text-[1.0625rem] font-semibold text-foreground">Resumen</h1>
         <p className="mt-6 rounded-xl bg-card p-5 text-[0.8125rem] font-medium text-danger">
           No se pudo traer el resumen: {error}
@@ -26,7 +26,7 @@ export default async function ResumenPage() {
     resumen;
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-8">
+    <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-5">
       <h1 className="text-[1.0625rem] font-semibold tracking-[-0.01em] text-foreground">Resumen</h1>
 
       {/* 2-up asimétrico: el único de toda la app (§9.4). 3/2 en 5 columnas. */}

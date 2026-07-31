@@ -12,7 +12,7 @@ export default async function PorPagar() {
   const { hoy, grupos, proximo, despuesDeLaSemana, error } = await traerPorPagar();
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-8">
+    <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-5">
       <h1 className="text-[1.0625rem] font-semibold tracking-[-0.01em] text-foreground">
         Por pagar
       </h1>

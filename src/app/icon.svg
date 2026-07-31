@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!--
+    Favicon e ícono de app instalada. Next lo sirve solo por estar en app/.
+    Va SOLO el átomo: el lockup completo a 32px es una mancha gris (§9.0.2).
+    Lleva fondo propio porque el ícono se ve sobre la pestaña del navegador,
+    que no es nuestro canvas.
+  -->
+  <rect width="64" height="64" rx="14" fill="#0A0A0C" />
+  <g fill="none" stroke-width="2.6" transform="translate(32 32) scale(0.82) translate(-32 -32)">
+    <ellipse cx="32" cy="32" rx="27" ry="11" stroke="#1B4DA0" />
+    <ellipse cx="32" cy="32" rx="27" ry="11" stroke="#1D63D2" transform="rotate(60 32 32)" />
+    <ellipse cx="32" cy="32" rx="27" ry="11" stroke="#35C4D4" transform="rotate(120 32 32)" />
+    <circle cx="32" cy="32" r="7.5" fill="#35C4D4" stroke="none" />
+  </g>
+</svg>
