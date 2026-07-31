@@ -5,6 +5,7 @@
  * Pocos números y grandes: si un número no cambia una decisión de Candela, no va.
  */
 import { inicioDeMes, sumarDias } from "./fecha";
+import type { Semaforo } from "./por-pagar";
 
 export type CreditoResumen = {
   id: string;
@@ -19,6 +20,16 @@ export type CuotaResumen = {
   fecha_cobro: string;
   cliente_id: string;
   cliente_nombre: string;
+  cliente_semaforo: Semaforo;
+};
+
+export type Deudor = {
+  cliente_id: string;
+  nombre: string;
+  monto: number;
+  semaforo: Semaforo;
+  /** Cuántas de sus cuotas ya vencieron. 0 = está al día aunque deba. */
+  cuotasVencidas: number;
 };
 
 export type Resumen = {
@@ -31,7 +42,7 @@ export type Resumen = {
   vencido: { monto: number; cuotas: number; personas: number };
   cobroEstaSemana: number;
   /** Ranking completo, no top 5: con muchos deudores el que buscás es el noveno. */
-  quienMeDebe: { cliente_id: string; nombre: string; monto: number }[];
+  quienMeDebe: Deudor[];
 };
 
 export function calcularResumen(
@@ -56,14 +67,17 @@ export function calcularResumen(
   const vencidas = impagas.filter((c) => c.fecha_cobro < hoy);
   const personasVencidas = new Set(vencidas.map((c) => c.cliente_id));
 
-  const porPersona = new Map<string, { cliente_id: string; nombre: string; monto: number }>();
+  const porPersona = new Map<string, Deudor>();
   for (const c of impagas) {
     const fila = porPersona.get(c.cliente_id) ?? {
       cliente_id: c.cliente_id,
       nombre: c.cliente_nombre,
       monto: 0,
+      semaforo: c.cliente_semaforo,
+      cuotasVencidas: 0,
     };
     fila.monto += c.monto;
+    if (c.fecha_cobro < hoy) fila.cuotasVencidas++;
     porPersona.set(c.cliente_id, fila);
   }
 

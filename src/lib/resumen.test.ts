@@ -18,6 +18,7 @@ const cuota = (o: Partial<CuotaResumen> = {}): CuotaResumen => ({
   fecha_cobro: HOY,
   cliente_id: "a",
   cliente_nombre: "A",
+  cliente_semaforo: "verde",
   ...o,
 });
 
@@ -135,11 +136,29 @@ describe("quien me debe", () => {
       ],
       HOY,
     );
-    expect(r.quienMeDebe).toEqual([
-      { cliente_id: "a", nombre: "Ana", monto: 60000 },
-      { cliente_id: "b", nombre: "Beto", monto: 90000 },
-    ].sort((x, y) => y.monto - x.monto));
-    expect(r.quienMeDebe[0].nombre).toBe("Beto");
+    expect(r.quienMeDebe.map((d) => [d.nombre, d.monto])).toEqual([
+      ["Beto", 90000],
+      ["Ana", 60000],
+    ]);
+  });
+
+  it("trae el semaforo y cuenta cuantas cuotas vencidas tiene cada uno", () => {
+    const r = calcularResumen(
+      [],
+      [
+        cuota({ cliente_id: "m", cliente_nombre: "Marta", cliente_semaforo: "rojo", fecha_cobro: "2026-07-20" }),
+        cuota({ cliente_id: "m", cliente_nombre: "Marta", cliente_semaforo: "rojo", fecha_cobro: "2026-07-25" }),
+        cuota({ cliente_id: "m", cliente_nombre: "Marta", cliente_semaforo: "rojo", fecha_cobro: "2026-09-01" }),
+      ],
+      HOY,
+    );
+    expect(r.quienMeDebe[0].semaforo).toBe("rojo");
+    expect(r.quienMeDebe[0].cuotasVencidas).toBe(2);
+  });
+
+  it("quien debe pero esta al dia tiene cero vencidas", () => {
+    const r = calcularResumen([], [cuota({ fecha_cobro: "2026-09-01" })], HOY);
+    expect(r.quienMeDebe[0].cuotasVencidas).toBe(0);
   });
 
   it("devuelve la lista COMPLETA, no un top 5", () => {

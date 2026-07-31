@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { FilaDeAcciones } from "@/components/acciones";
+import { Avatar, ChipSemaforo } from "@/components/semaforo";
 import { nombreDeMes } from "@/lib/fecha";
 import { formatARS } from "@/lib/money";
 import { traerResumen } from "@/lib/queries";
@@ -100,12 +102,21 @@ export default async function ResumenPage() {
         </span>
       </Link>
 
+      <FilaDeAcciones />
+
       {/* Las deudas pendientes, abajo. Lista COMPLETA con scroll: cortar en
           cinco es cortar justo donde empieza a servir (§9.6). */}
       <section className="mt-7">
-        <h2 className="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          Quién me debe
-        </h2>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Quién me debe
+          </h2>
+          {quienMeDebe.length > 0 ? (
+            <span className="text-[0.8125rem] font-medium tabular-nums text-muted-foreground">
+              {quienMeDebe.length === 1 ? "1 persona" : `${quienMeDebe.length} personas`}
+            </span>
+          ) : null}
+        </div>
 
         {quienMeDebe.length === 0 ? (
           <p className="mt-2 rounded-xl bg-card p-5 text-[0.8125rem] font-medium text-muted-foreground">
@@ -114,16 +125,33 @@ export default async function ResumenPage() {
         ) : (
           <ul className="mt-2 flex flex-col gap-2">
             {quienMeDebe.map((persona) => (
-              <li
-                key={persona.cliente_id}
-                className="flex items-center justify-between gap-3 rounded-xl bg-card px-4 py-3.5"
-              >
-                <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold tracking-[-0.006em] text-foreground">
-                  {persona.nombre}
-                </span>
-                <span className="shrink-0 font-mono text-[0.875rem] font-medium tabular-nums text-foreground">
-                  {formatARS(persona.monto)}
-                </span>
+              <li key={persona.cliente_id}>
+                <Link
+                  href="/clientes"
+                  className="flex items-center gap-3 rounded-xl bg-card px-4 py-3.5"
+                >
+                  <Avatar nombre={persona.nombre} />
+
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[0.9375rem] font-semibold tracking-[-0.006em] text-foreground">
+                      {persona.nombre}
+                    </span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2">
+                      <ChipSemaforo estado={persona.semaforo} />
+                      {persona.cuotasVencidas > 0 ? (
+                        <span className="text-[0.8125rem] font-medium text-danger">
+                          {persona.cuotasVencidas === 1
+                            ? "1 cuota vencida"
+                            : `${persona.cuotasVencidas} cuotas vencidas`}
+                        </span>
+                      ) : null}
+                    </span>
+                  </span>
+
+                  <span className="shrink-0 font-mono text-[0.875rem] font-medium tabular-nums text-foreground">
+                    {formatARS(persona.monto)}
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>

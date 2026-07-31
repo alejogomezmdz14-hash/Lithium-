@@ -224,6 +224,12 @@ Tests concretos, no aspiraciones:
 | `/por-pagar` | **Por pagar** | ¿A quién tengo que correr hoy? |
 | `/clientes` | **Clientes** | ¿A quién le puedo prestar de nuevo? |
 
+**Pantallas de tarea única** (fuera del shell, sin barra de navegación): `/login` · `/cobrar/[id]` · `/nuevo-cliente` · `/nuevo-prestamo`.
+
+**La fila de círculos de acción va en el Resumen** (§9.4), y no pesan igual: `Nueva deuda` ocupa el ancho completo y va sola arriba; abajo, en 2 columnas, `Ya me pagó` y `Cliente nuevo`. Son **acciones, nunca destinos** — para navegar están los tabs.
+
+**Clientes va en SECCIONES por semáforo**, peor primero, cada una con su cuenta y una bajada que explica el grupo (`Mal pagador · 3 — Te deben plata vencida`). Agrupar en vez de listar plano es lo que hace que la pregunta se conteste de un barrido: el header ya da la respuesta y la fila solo dice quién. **Dentro de la sección el chip va solo como punto**, sin repetir la palabra que ya está en el header — salvo que el color lo haya puesto ella a mano, que sí es información nueva.
+
 **El home es `Resumen`, no `Por pagar`** — corregido el 2026-07-31 a pedido del cliente. La versión anterior de esta sección ponía la lista de cobros como home; en la práctica se leía como una lista tirada sin contexto. El Resumen abre con los números del mes y **abajo la deuda pendiente por persona**, con link a la lista completa.
 
 `/login` y `/cobrar/[id]` viven **afuera** del shell: son pantallas de tarea única y la navegación ahí solo distrae mientras se registra plata.
@@ -237,6 +243,7 @@ Las palabras son lo único que Candela lee de verdad. Esta lista es **normativa*
 | Concepto | La palabra de la app | Prohibido |
 |---|---|---|
 | `creditos` (la fila) | **préstamo** | crédito, operación, cartera |
+| crear un `credito` | **Nueva deuda** (botón) · **Crear el préstamo** (confirmar) | Nuevo crédito, Alta de operación |
 | `cuotas` con `cantidad_cuotas > 1` | **cuota** | vencimiento, plan de pagos |
 | `cuotas` con `cantidad_cuotas = 1` | **el pago** / **un solo pago** | "cuota 1 de 1" |
 | registrar un pago | **Ya me pagó** (botón) · **Listo, la cobré** (confirmar) | Cobrar, Registrar pago, Guardar |

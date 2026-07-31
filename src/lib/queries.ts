@@ -11,14 +11,14 @@ const ORDEN_SEMAFORO: Record<Semaforo, number> = { rojo: 0, naranja: 1, nuevo: 2
 type CuotaImpagaCruda = {
   monto: number | string;
   fecha_cobro: string;
-  creditos: { clientes: { id: string; nombre: string } };
+  creditos: { clientes: { id: string; nombre: string; semaforo_efectivo: Semaforo } };
 };
 
 /** Todas las cuotas impagas, aplanadas. La usan el Resumen y Clientes. */
 async function traerImpagas(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data, error } = await supabase
     .from("cuotas")
-    .select("monto,fecha_cobro,creditos!inner(clientes!inner(id,nombre))")
+    .select("monto,fecha_cobro,creditos!inner(clientes!inner(id,nombre,semaforo_efectivo))")
     .is("pagado_el", null)
     .limit(2000);
 
@@ -29,6 +29,7 @@ async function traerImpagas(supabase: Awaited<ReturnType<typeof createClient>>) 
     fecha_cobro: f.fecha_cobro,
     cliente_id: f.creditos.clientes.id,
     cliente_nombre: f.creditos.clientes.nombre,
+    cliente_semaforo: f.creditos.clientes.semaforo_efectivo,
   }));
   return { filas, error: null as string | null };
 }
