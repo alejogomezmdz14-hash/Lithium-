@@ -649,10 +649,23 @@ Qué papeles pide la financiera según el tipo de cliente. La matriz vive en **`
 
 **La documentación NO mueve el semáforo.** Son dos preguntas distintas: el semáforo dice *"¿me paga?"* y sale del historial de pagos; la documentación dice *"¿tengo los papeles?"*. Mezclarlas haría que alguien que siempre pagó puntual aparezca en rojo por una factura faltante, y eso rompe la confianza en el semáforo entero. Se muestran como señales separadas, y la de documentación aparece **justo antes de prestar**, que es cuando importa.
 
-### 10.1 Storage — reglas que no se tocan
+### 10.1 Acceso — `es_admin()`, nunca `using (true)`
+
+Las policies de RLS de **las cinco tablas y de `storage.objects`** exigen `es_admin()`, que lee `rol=admin` de **`app_metadata`**. No se vuelve a `using (true)`: eso significaba *"cualquier usuario logueado lee todo"*, y estaba a un toggle del panel de Supabase —una casilla que no vive en el código— de que cualquiera que se registrara viera todos los DNI de la cartera.
+
+- **`app_metadata`, jamás `user_metadata`.** El segundo lo edita el propio usuario con su sesión; anclar permisos ahí es no anclarlos.
+- **Cada usuaria nueva hay que sellarla:** `node scripts/marcar-admin.mjs <mail> <pass>`. Sin el sello, la app le aparece **vacía**, no con un error — es el síntoma a reconocer.
+- Si ya tenía sesión abierta, **salir y volver a entrar**: el claim entra al token al emitirlo.
+- El bucket se **re-afirma privado en cada migración** (`update storage.buckets set public = false`), por si alguien lo abre desde el panel.
+
+### 10.2 Storage — reglas que no se tocan
 
 El bucket **`documentos` es PRIVADO**. Adentro van DNI, recibos de sueldo y pagarés firmados **de terceros** — gente que le pide plata a Candela, no ella. Verificado contra la base (`pnpm db:verify:docs`): la URL pública falla y la anon key sin sesión falla.
 
+- **La subida NO puede pasar por una Server Action.** Verificado en la doc de Next 16: el body de una Server Action está topeado en **1 MB** por default, y una foto de celular pesa entre 3 y 12 MB. Va **comprimida en el navegador** (2000px lado mayor, JPEG q0.80) y directo a Storage con **signed upload URL**, con el path elegido por el servidor — si lo eligiera el navegador, podría escribir en la carpeta de cualquier cliente.
+- **Sacarle el EXIF a la foto antes de subirla** (re-encode por canvas). Una foto de un DNI sacada en la puerta de la casa lleva las coordenadas de esa casa adentro. Es dato de un tercero que nadie pidió guardar.
+- **Nada de miniaturas de documentos en listas.** Una lista con fotos de DNI es la filtración servida a cualquiera que mire la pantalla de costado. Las filas son texto; la imagen se abre a propósito.
+- **Prohibido `next/image` para documentos.** El optimizador cachea las imágenes por su cuenta y ese cache no se invalida a mano, así que un documento seguiría sirviéndose después de borrarlo. Va `<img>` plano.
 - **Nunca `getPublicUrl`.** Siempre `createSignedUrl` con vencimiento corto.
 - En `documentos` se guarda el **`storage_path`**, jamás una URL.
 - Convención de path: `{cliente_id}/{tipo}/{uuid}.{ext}`.
