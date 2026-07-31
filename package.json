@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "db:migrate": "node scripts/migrate.mjs",
     "db:migrate:dry": "node scripts/migrate.mjs --dry",
-    "db:verify": "node scripts/verificar-schema.mjs"
+    "db:verify": "node scripts/verificar-schema.mjs",
+    "db:verify:docs": "node scripts/verificar-documentacion.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

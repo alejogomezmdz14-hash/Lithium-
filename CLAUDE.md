@@ -620,7 +620,37 @@ Por qué no se puede confundir de campo:
 
 **Descartado:** editar el monto de cuotas individuales inline en el form. N inputs de plata editables en una lista, en un teléfono, con reconciliación viva, es la pantalla más fácil de romper de toda la app. `repartirMonto()` redondeado a los mil ya produce números cobrables; si una cuota puntual necesita otro monto o fecha, se arregla después desde el detalle de esa cuota, con un solo campo en foco.
 
-## 10. Este archivo es VIVO — mantenerlo actualizado
+## 10. Documentación por cliente
+
+Qué papeles pide la financiera según el tipo de cliente. La matriz vive en **`src/lib/documentacion.ts`**, no en una tabla: la cambia un programador cuando el cliente lo pide, no Candela desde la app.
+
+| Tipo | Documentación | Lleva período |
+|---|---|---|
+| `monotributista` | últimas **3 facturas** | sí |
+| `comercio` | últimas **3 facturas** (comparte el objeto `FACTURAS` con monotributista) | sí |
+| `empleado` | últimos **3 recibos de sueldo** | sí |
+| `pami` | **DNI del titular** · **DNI del garante** · **pagaré firmado** | no |
+
+**Completo ≠ al día.** Cada documento guarda su **`periodo`** (el mes al que corresponde, no cuándo se subió). Si están los 3 pero el más nuevo tiene más de `MESES_VIGENCIA` (3), la app dice *"Están todos, pero viejos"*. Un ✓ que no distingue "trajo los papeles" de "trajo los del año pasado" no sirve para decidir si prestar.
+
+**Garante:** `clientes.garante_nombre` y `garante_telefono`, **siempre opcionales**, también para PAMI. Existen porque a un garante se le reclama, y con la foto del DNI sola no lo podés llamar — pero exigirlos frenaría el alta de alguien parada en la puerta de la casa.
+
+**Al cambiar el tipo de un cliente, los documentos viejos NO se borran.** Quedan como `sobrantes` y la app avisa cuáles ya no aplican. Perder papeles que costó juntar por un cambio de clasificación sería un error caro.
+
+**La documentación NO mueve el semáforo.** Son dos preguntas distintas: el semáforo dice *"¿me paga?"* y sale del historial de pagos; la documentación dice *"¿tengo los papeles?"*. Mezclarlas haría que alguien que siempre pagó puntual aparezca en rojo por una factura faltante, y eso rompe la confianza en el semáforo entero. Se muestran como señales separadas, y la de documentación aparece **justo antes de prestar**, que es cuando importa.
+
+### 10.1 Storage — reglas que no se tocan
+
+El bucket **`documentos` es PRIVADO**. Adentro van DNI, recibos de sueldo y pagarés firmados **de terceros** — gente que le pide plata a Candela, no ella. Verificado contra la base (`pnpm db:verify:docs`): la URL pública falla y la anon key sin sesión falla.
+
+- **Nunca `getPublicUrl`.** Siempre `createSignedUrl` con vencimiento corto.
+- En `documentos` se guarda el **`storage_path`**, jamás una URL.
+- Convención de path: `{cliente_id}/{tipo}/{uuid}.{ext}`.
+- Límite de 10 MB y MIME restringido a JPEG/PNG/WebP/PDF, en el propio bucket.
+
+**Borrar un cliente NO borra sus archivos de Storage.** La base cascadea las filas de `documentos`, pero Supabase deja los objetos. **Hay que borrarlos explícitamente desde la app** — si no, quedan DNI de gente borrada ocupando lugar para siempre, que además de costar es justo lo que no debe pasar con documentos ajenos.
+
+## 11. Este archivo es VIVO — mantenerlo actualizado
 
 **Regla:** cuando algo de acá cambia en el código, se actualiza este archivo **en el mismo turno**, no "después". Si Claude termina una tarea que invalida o extiende algo escrito arriba, editar la sección correspondiente antes de dar la tarea por cerrada.
 
