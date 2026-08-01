@@ -94,46 +94,51 @@ export default async function ClientesPage() {
 
                 <ul className="mt-2 flex flex-col gap-2">
                   {grupo.map((cliente) => (
-                    <li key={cliente.id} className="flex items-center gap-3 rounded-xl bg-card px-4 py-3.5">
-                      <Avatar nombre={cliente.nombre} />
+                    <li key={cliente.id}>
+                      <Link
+                        href={`/clientes/${cliente.id}`}
+                        className="flex items-center gap-3 rounded-xl bg-card px-4 py-3.5"
+                      >
+                        <Avatar nombre={cliente.nombre} />
 
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[0.9375rem] font-semibold tracking-[-0.006em] text-foreground">
-                          {cliente.nombre}
-                        </p>
-                        <p className="mt-0.5">
-                          {/* Dentro de la sección la palabra ya la dice el header,
-                              así que acá va solo el punto — salvo que el color lo
-                              haya puesto ella a mano, que sí es información nueva. */}
-                          <ChipSemaforo
-                            estado={cliente.semaforo}
-                            esManual={cliente.esManual}
-                            soloPunto={!cliente.esManual}
-                          />
-                          {!cliente.esManual && cliente.telefono ? (
-                            <span className="text-[0.8125rem] font-medium text-muted-foreground">
-                              {cliente.telefono}
-                            </span>
-                          ) : null}
-                        </p>
-                      </div>
-
-                      <div className="shrink-0 text-right">
-                        {cliente.debe > 0 ? (
-                          <>
-                            <p className="font-mono text-[0.875rem] font-medium tabular-nums text-foreground">
-                              {formatARS(cliente.debe)}
-                            </p>
-                            <p className="mt-0.5 text-[0.8125rem] font-medium text-muted-foreground">
-                              te debe
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-[0.8125rem] font-medium text-muted-foreground">
-                            no te debe
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[0.9375rem] font-semibold tracking-[-0.006em] text-foreground">
+                            {cliente.nombre}
                           </p>
-                        )}
-                      </div>
+                          <p className="mt-0.5">
+                            {/* Dentro de la sección la palabra ya la dice el header,
+                                así que acá va solo el punto — salvo que el color lo
+                                haya puesto ella a mano, que sí es información nueva. */}
+                            <ChipSemaforo
+                              estado={cliente.semaforo}
+                              esManual={cliente.esManual}
+                              soloPunto={!cliente.esManual}
+                            />
+                            {!cliente.esManual && cliente.telefono ? (
+                              <span className="text-[0.8125rem] font-medium text-muted-foreground">
+                                {cliente.telefono}
+                              </span>
+                            ) : null}
+                          </p>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          {cliente.debe > 0 ? (
+                            <>
+                              <p className="font-mono text-[0.875rem] font-medium tabular-nums text-foreground">
+                                {formatARS(cliente.debe)}
+                              </p>
+                              <p className="mt-0.5 text-[0.8125rem] font-medium text-muted-foreground">
+                                te debe
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-[0.8125rem] font-medium text-muted-foreground">
+                              no te debe
+                            </p>
+                          )}
+                        </div>
+                      </Link>
                     </li>
                   ))}
                 </ul>
