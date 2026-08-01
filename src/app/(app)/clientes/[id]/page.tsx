@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import { BorrarDocumento } from "./borrar";
 import { BotonSubir } from "./subir";
+import { SelectorDeTipo } from "./tipo";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -157,11 +158,14 @@ export default async function FichaCliente({ params }: Props) {
           </span>
         </div>
 
-        {!cliente.tipo ? (
-          <p className="mt-2 rounded-xl bg-card p-5 text-[0.8125rem] font-medium text-muted-foreground">
-            Para saber qué papeles pedirle, primero hay que definir de qué tipo es.
-          </p>
-        ) : (
+        <SelectorDeTipo
+          clienteId={cliente.id}
+          actual={cliente.tipo}
+          garanteNombre={cliente.garante_nombre}
+          garanteTelefono={cliente.garante_telefono}
+        />
+
+        {cliente.tipo ? (
           <div className="mt-2 flex flex-col gap-2">
             {evaluacion.requisitos.map((estado) => {
               const propios = documentos.filter((d) => d.tipo === estado.requisito.tipo);
@@ -260,7 +264,7 @@ export default async function FichaCliente({ params }: Props) {
               </article>
             ) : null}
           </div>
-        )}
+        ) : null}
       </section>
     </main>
   );

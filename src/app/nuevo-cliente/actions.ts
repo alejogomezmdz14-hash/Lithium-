@@ -33,22 +33,30 @@ export async function crearCliente(
   if (nombre.length < 2) return { error: "Escribí el nombre de la persona." };
   if (tipo && !TIPOS_VALIDOS.has(tipo)) return { error: "Ese tipo de cliente no existe." };
 
-  const { error } = await supabase.from("clientes").insert({
-    nombre,
-    telefono: telefono || null,
-    notas: notas || null,
-    // El tipo puede quedar vacío: define qué papeles pedirle, no si se puede
-    // cargar. Frenar un alta parada en la puerta de la casa por una
-    // clasificación sería exactamente el tipo de fricción que §9.0 prohíbe.
-    tipo: tipo || null,
-    // Siempre opcionales, también para PAMI (§10).
-    garante_nombre: garanteNombre || null,
-    garante_telefono: garanteTelefono || null,
-  });
+  const { data: creado, error } = await supabase
+    .from("clientes")
+    .insert({
+      nombre,
+      telefono: telefono || null,
+      notas: notas || null,
+      // El tipo puede quedar vacío: define qué papeles pedirle, no si se puede
+      // cargar. Frenar un alta parada en la puerta de la casa por una
+      // clasificación sería exactamente el tipo de fricción que §9.0 prohíbe.
+      tipo: tipo || null,
+      // Siempre opcionales, también para PAMI (§10).
+      garante_nombre: garanteNombre || null,
+      garante_telefono: garanteTelefono || null,
+    })
+    .select("id")
+    .single();
 
-  if (error) return { error: `No se pudo guardar: ${error.message}` };
+  if (error || !creado) return { error: `No se pudo guardar: ${error?.message}` };
 
   revalidatePath("/clientes");
   revalidatePath("/");
-  redirect("/clientes");
+
+  // Se cae en la ficha de la persona recién creada, no en la lista: es donde
+  // están los botones para subirle los papeles, y subirlos es la continuación
+  // natural de cargarla. Antes había que volver a buscarla en la lista.
+  redirect(`/clientes/${creado.id}`);
 }

@@ -99,6 +99,40 @@ export async function registrarDocumento(datos: {
   return { error: null };
 }
 
+const TIPOS_CLIENTE = new Set(Object.keys(REQUISITOS));
+
+/**
+ * Cambia el tipo de un cliente ya cargado, y de paso los datos del garante.
+ *
+ * Sin esto, alguien cargado antes de que existiera el campo se quedaba sin tipo
+ * para siempre — y sin tipo la app no sabe qué papeles pedirle, así que no
+ * muestra ningún botón para subirlos.
+ *
+ * Los documentos del tipo anterior NO se borran (§10): quedan como sobrantes.
+ */
+export async function cambiarTipo(
+  clienteId: string,
+  tipo: string | null,
+  garante?: { nombre: string; telefono: string },
+): Promise<{ error: string | null }> {
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Se te venció la sesión. Entrá de nuevo." };
+  if (tipo !== null && !TIPOS_CLIENTE.has(tipo)) return { error: "Ese tipo no existe." };
+
+  const cambios: Record<string, string | null> = { tipo };
+  if (garante) {
+    cambios.garante_nombre = garante.nombre.trim() || null;
+    cambios.garante_telefono = garante.telefono.trim() || null;
+  }
+
+  const { error } = await supabase.from("clientes").update(cambios).eq("id", clienteId);
+  if (error) return { error: `No se pudo guardar: ${error.message}` };
+
+  revalidatePath(`/clientes/${clienteId}`);
+  revalidatePath("/clientes");
+  return { error: null };
+}
+
 /** Borra el archivo ANTES que la fila: si falla, la fila queda y se reintenta. */
 export async function borrarDocumento(id: string): Promise<{ error: string | null }> {
   const { supabase, user } = await sesion();
