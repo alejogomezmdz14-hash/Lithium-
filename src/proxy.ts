@@ -58,9 +58,17 @@ export async function proxy(request: NextRequest) {
   // getUser() y NO getSession(): getSession() lee la cookie y confía en lo que
   // dice, sin validar contra el servidor de auth. Para decidir si alguien entra,
   // eso no alcanza.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  const user = authData?.user ?? null;
+
+  // Un fallo de auth acá NO es "no hay sesión": puede ser una env var rota o
+  // Supabase caído, y el síntoma es idéntico — redirección al login sin más.
+  // Ya nos costó un rato: una key cargada en Vercel con un BOM invisible
+  // adelante hacía fallar todos los pedidos con "Cannot convert argument to a
+  // ByteString". Sin este log, en producción no se ve nada.
+  if (authError && !request.nextUrl.pathname.startsWith("/login")) {
+    console.error("[proxy] getUser() falló:", authError.message);
+  }
 
   const esPublica = RUTAS_PUBLICAS.some((r) => request.nextUrl.pathname.startsWith(r));
 
