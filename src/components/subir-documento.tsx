@@ -6,7 +6,7 @@ import { useId, useRef, useState } from "react";
 import { esPDF, ErrorDeImagen, prepararImagen } from "@/lib/imagen";
 import { createClient } from "@/lib/supabase/client";
 
-import { pedirPermisoDeSubida, registrarDocumento } from "./actions";
+import { pedirPermisoDeSubida, registrarDocumento } from "@/app/acciones-documentos";
 
 type Props = {
   clienteId: string;

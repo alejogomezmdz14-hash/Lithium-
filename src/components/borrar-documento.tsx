@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { borrarDocumento } from "./actions";
+import { borrarDocumento } from "@/app/acciones-documentos";
 
 /**
  * Borrar un documento SÍ pide confirmación: §9.0 dice que solo lo irreversible

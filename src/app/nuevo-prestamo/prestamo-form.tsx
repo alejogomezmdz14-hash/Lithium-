@@ -5,7 +5,13 @@ import { useActionState, useState } from "react";
 import { fechaConDia, sumarDias } from "@/lib/fecha";
 import { formatARS, parseARS, repartirMonto } from "@/lib/money";
 
+import Link from "next/link";
+
+import { BotonSubir } from "@/components/subir-documento";
+import { REQUISITOS } from "@/lib/documentacion";
+
 import { crearPrestamo, type EstadoNuevoPrestamo } from "./actions";
+import { AltaRapida } from "./alta-rapida";
 import { BuscadorDeCliente, type ClienteElegible } from "./buscador-cliente";
 
 const INICIAL: EstadoNuevoPrestamo = { error: null };
@@ -46,6 +52,7 @@ export function PrestamoForm({
   const [estado, accion, enviando] = useActionState(crearPrestamo, INICIAL);
 
   const [cliente, setCliente] = useState<ClienteElegible | null>(null);
+  const [altaAbierta, setAltaAbierta] = useState(false);
   const clienteId = cliente?.id ?? "";
   const [capitalTexto, setCapitalTexto] = useState("");
   const [totalTexto, setTotalTexto] = useState("");
@@ -80,24 +87,82 @@ export function PrestamoForm({
       <input type="hidden" name="frecuencia" value={frecuencia} />
 
       <section className="rounded-xl bg-card p-5">
-        <p className="text-[0.9375rem] font-semibold text-foreground">¿A quién le prestás?</p>
+        <p className="text-[0.9375rem] font-semibold text-foreground">1. ¿A quién le prestás?</p>
 
-        <BuscadorDeCliente
-          clientes={clientes}
-          elegido={cliente}
-          alElegir={setCliente}
-          deshabilitado={enviando}
-        />
-
-        {/* El aviso de papeles va acá y no en la ficha: este es el momento en
-            que importa, justo antes de poner la plata. Informa, NUNCA bloquea —
-            la decisión de prestar la toma ella con datos que la app no tiene. */}
-        {cliente && cliente.papeles && !cliente.papelesOk ? (
-          <p className="mt-3 rounded-lg bg-surface-raised px-4 py-3 text-[0.8125rem] font-medium text-warning">
-            {cliente.papeles}. Podés prestarle igual.
-          </p>
-        ) : null}
+        {altaAbierta ? (
+          <AltaRapida
+            alCrear={(c) => {
+              setCliente(c);
+              setAltaAbierta(false);
+            }}
+            alCancelar={() => setAltaAbierta(false)}
+          />
+        ) : (
+          <>
+            <BuscadorDeCliente
+              clientes={clientes}
+              elegido={cliente}
+              alElegir={setCliente}
+              deshabilitado={enviando}
+            />
+            {!cliente ? (
+              <button
+                type="button"
+                onClick={() => setAltaAbierta(true)}
+                disabled={enviando}
+                className="mt-2 h-12 w-full rounded-full bg-surface-raised text-[0.8125rem] font-semibold text-primary-text"
+              >
+                + Es alguien nuevo
+              </button>
+            ) : null}
+          </>
+        )}
       </section>
+
+      {/* 2. Los papeles, DENTRO del alta de la deuda. Es donde se los pide en la
+          vida real: la persona está enfrente con los papeles en la mano. */}
+      {cliente ? (
+        <section className="rounded-xl bg-card p-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-[0.9375rem] font-semibold text-foreground">2. Documentación</p>
+            {cliente.papeles ? (
+              <span
+                className={`text-[0.8125rem] font-medium ${
+                  cliente.papelesOk ? "text-muted-foreground" : "text-warning"
+                }`}
+              >
+                {cliente.papeles}
+              </span>
+            ) : null}
+          </div>
+
+          {!cliente.tipo ? (
+            <p className="mt-2 text-[0.8125rem] font-medium text-muted-foreground">
+              Para saber qué papeles pedirle hay que definir de qué tipo es.{" "}
+              <Link href={`/clientes/${cliente.id}`} className="text-primary-text">
+                Definirlo ahora ›
+              </Link>
+            </p>
+          ) : (
+            <div className="mt-3 flex flex-col gap-3">
+              {REQUISITOS[cliente.tipo].map((r) => (
+                <div key={r.tipo} className="rounded-lg bg-surface-raised p-4">
+                  <p className="text-[0.8125rem] font-semibold text-foreground">{r.label}</p>
+                  <BotonSubir
+                    clienteId={cliente.id}
+                    tipo={r.tipo}
+                    etiqueta={r.singular}
+                    pidePeriodo={r.pidePeriodo}
+                  />
+                </div>
+              ))}
+              <p className="text-[0.8125rem] font-medium text-muted-foreground">
+                Podés crear el préstamo igual y subir los papeles después.
+              </p>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       <section className="rounded-xl bg-card p-5">
         <label htmlFor="capital" className="text-[0.9375rem] font-semibold text-foreground">

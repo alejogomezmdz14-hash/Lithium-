@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 
 import { NOMBRE_TIPO_CLIENTE, REQUISITOS, type TipoCliente } from "@/lib/documentacion";
 
-import { cambiarTipo } from "./actions";
+import { cambiarTipo } from "@/app/acciones-documentos";
 
 const TIPOS = Object.keys(NOMBRE_TIPO_CLIENTE) as TipoCliente[];
 

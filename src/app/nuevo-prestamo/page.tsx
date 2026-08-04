@@ -49,6 +49,7 @@ export default async function NuevoPrestamoPage() {
             id: c.id,
             nombre: c.nombre,
             semaforo: c.semaforo,
+            tipo: c.tipo,
             papeles: c.tipo ? c.papeles : null,
             papelesOk: c.papelesOk,
           }))}

@@ -4,14 +4,18 @@ import { randomUUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 
-import { REQUISITOS, type TipoDocumento } from "@/lib/documentacion";
+import { REQUISITOS, type TipoCliente, type TipoDocumento } from "@/lib/documentacion";
 import { createClient } from "@/lib/supabase/server";
 
-const BUCKET = "documentos";
+/**
+ * Acciones de documentación. Viven acá, fuera de una carpeta de ruta, porque
+ * las usan dos flujos: la ficha del cliente y el alta de una deuda nueva —
+ * donde subir los papeles es parte del mismo trámite.
+ */
 
-const TIPOS_DOC = new Set<string>(
-  Object.values(REQUISITOS).flatMap((rs) => rs.map((r) => r.tipo)),
-);
+const BUCKET = "documentos";
+const TIPOS_DOC = new Set<string>(Object.values(REQUISITOS).flatMap((rs) => rs.map((r) => r.tipo)));
+const TIPOS_CLIENTE = new Set(Object.keys(REQUISITOS));
 
 async function sesion() {
   const supabase = await createClient();
@@ -32,9 +36,8 @@ export type Permiso =
  * y una foto no entra (§10.2). Lo que pasa por acá es el permiso; los bytes van
  * del navegador directo a Storage.
  *
- * **El path lo elige el servidor, no el navegador.** Si lo eligiera el cliente,
- * podría escribir en la carpeta de cualquier otra persona: la policy solo
- * verifica el bucket, no la subcarpeta.
+ * **El path lo elige el servidor.** Si lo eligiera el navegador, podría escribir
+ * en la carpeta de cualquier otra persona: la policy solo verifica el bucket.
  */
 export async function pedirPermisoDeSubida(
   clienteId: string,
@@ -56,7 +59,6 @@ export async function pedirPermisoDeSubida(
   if (!cliente) return fallo("No existe esa persona.");
 
   const path = `${clienteId}/${tipo}/${randomUUID()}.${extension}`;
-
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
   if (error || !data) return fallo(`No se pudo preparar la subida: ${error?.message}`);
 
@@ -99,17 +101,30 @@ export async function registrarDocumento(datos: {
   return { error: null };
 }
 
-const TIPOS_CLIENTE = new Set(Object.keys(REQUISITOS));
+/** Borra el archivo ANTES que la fila: si falla, la fila queda y se reintenta. */
+export async function borrarDocumento(id: string): Promise<{ error: string | null }> {
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Se te venció la sesión. Entrá de nuevo." };
 
-/**
- * Cambia el tipo de un cliente ya cargado, y de paso los datos del garante.
- *
- * Sin esto, alguien cargado antes de que existiera el campo se quedaba sin tipo
- * para siempre — y sin tipo la app no sabe qué papeles pedirle, así que no
- * muestra ningún botón para subirlos.
- *
- * Los documentos del tipo anterior NO se borran (§10): quedan como sobrantes.
- */
+  const { data: doc } = await supabase
+    .from("documentos")
+    .select("id,cliente_id,storage_path")
+    .eq("id", id)
+    .maybeSingle();
+  if (!doc) return { error: "Ese documento ya no está." };
+
+  const { error: errorStorage } = await supabase.storage.from(BUCKET).remove([doc.storage_path]);
+  if (errorStorage) return { error: `No se pudo borrar el archivo: ${errorStorage.message}` };
+
+  const { error } = await supabase.from("documentos").delete().eq("id", id);
+  if (error) return { error: `No se pudo borrar el registro: ${error.message}` };
+
+  revalidatePath(`/clientes/${doc.cliente_id}`);
+  revalidatePath("/clientes");
+  return { error: null };
+}
+
+/** Cambia el tipo de un cliente ya cargado, y de paso los datos del garante. */
 export async function cambiarTipo(
   clienteId: string,
   tipo: string | null,
@@ -133,27 +148,58 @@ export async function cambiarTipo(
   return { error: null };
 }
 
-/** Borra el archivo ANTES que la fila: si falla, la fila queda y se reintenta. */
-export async function borrarDocumento(id: string): Promise<{ error: string | null }> {
+export type ClienteCreado = {
+  id: string;
+  nombre: string;
+  tipo: TipoCliente | null;
+} | null;
+
+/**
+ * Crea un cliente desde el flujo de una deuda nueva, sin salir de la pantalla.
+ *
+ * Se guarda en el acto porque los documentos necesitan que la persona exista:
+ * el archivo se guarda en una carpeta con su id.
+ */
+export async function crearClienteRapido(datos: {
+  nombre: string;
+  dni: string;
+  telefono: string;
+  localidad: string;
+  lugarTrabajo: string;
+  tipo: string;
+  garanteNombre: string;
+  garanteTelefono: string;
+}): Promise<{ cliente: ClienteCreado; error: string | null }> {
   const { supabase, user } = await sesion();
-  if (!user) return { error: "Se te venció la sesión. Entrá de nuevo." };
+  if (!user) return { cliente: null, error: "Se te venció la sesión. Entrá de nuevo." };
 
-  const { data: doc } = await supabase
-    .from("documentos")
-    .select("id,cliente_id,storage_path")
-    .eq("id", id)
-    .maybeSingle();
-  if (!doc) return { error: "Ese documento ya no está." };
-
-  const { error: errorStorage } = await supabase.storage.from(BUCKET).remove([doc.storage_path]);
-  if (errorStorage) {
-    return { error: `No se pudo borrar el archivo: ${errorStorage.message}` };
+  const nombre = datos.nombre.trim();
+  if (nombre.length < 2) return { cliente: null, error: "Escribí el nombre de la persona." };
+  if (datos.tipo && !TIPOS_CLIENTE.has(datos.tipo)) {
+    return { cliente: null, error: "Ese tipo de cliente no existe." };
   }
 
-  const { error } = await supabase.from("documentos").delete().eq("id", id);
-  if (error) return { error: `No se pudo borrar el registro: ${error.message}` };
+  const { data, error } = await supabase
+    .from("clientes")
+    .insert({
+      nombre,
+      dni: datos.dni.trim() || null,
+      telefono: datos.telefono.trim() || null,
+      localidad: datos.localidad.trim() || null,
+      lugar_trabajo: datos.lugarTrabajo.trim() || null,
+      tipo: datos.tipo || null,
+      garante_nombre: datos.garanteNombre.trim() || null,
+      garante_telefono: datos.garanteTelefono.trim() || null,
+    })
+    .select("id,nombre,tipo")
+    .single();
 
-  revalidatePath(`/clientes/${doc.cliente_id}`);
+  if (error || !data) return { cliente: null, error: `No se pudo guardar: ${error?.message}` };
+
   revalidatePath("/clientes");
-  return { error: null };
+  revalidatePath("/");
+  return {
+    cliente: { id: data.id, nombre: data.nombre, tipo: data.tipo as TipoCliente | null },
+    error: null,
+  };
 }

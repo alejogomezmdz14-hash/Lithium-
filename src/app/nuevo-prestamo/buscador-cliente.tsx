@@ -4,12 +4,14 @@ import { useId, useMemo, useRef, useState } from "react";
 
 import { Avatar, ChipSemaforo } from "@/components/semaforo";
 import { buscar } from "@/lib/buscar";
+import type { TipoCliente } from "@/lib/documentacion";
 import type { Semaforo } from "@/lib/por-pagar";
 
 export type ClienteElegible = {
   id: string;
   nombre: string;
   semaforo: Semaforo;
+  tipo: TipoCliente | null;
   /** Qué le falta de documentación. Null si no tiene tipo definido. */
   papeles: string | null;
   papelesOk: boolean;

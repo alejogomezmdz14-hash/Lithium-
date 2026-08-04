@@ -14,8 +14,9 @@ import { formatARS } from "@/lib/money";
 import type { Semaforo } from "@/lib/por-pagar";
 import { createClient } from "@/lib/supabase/server";
 
-import { BorrarDocumento } from "./borrar";
-import { BotonSubir } from "./subir";
+import { BorrarDocumento } from "@/components/borrar-documento";
+import { BotonSubir } from "@/components/subir-documento";
+
 import { SelectorDeTipo } from "./tipo";
 
 type Props = { params: Promise<{ id: string }> };
