@@ -45,7 +45,13 @@ export default async function NuevoPrestamoPage() {
         </div>
       ) : (
         <PrestamoForm
-          clientes={clientes.map((c) => ({ id: c.id, nombre: c.nombre }))}
+          clientes={clientes.map((c) => ({
+            id: c.id,
+            nombre: c.nombre,
+            semaforo: c.semaforo,
+            papeles: c.tipo ? c.papeles : null,
+            papelesOk: c.papelesOk,
+          }))}
           hoy={hoyEnBA()}
         />
       )}

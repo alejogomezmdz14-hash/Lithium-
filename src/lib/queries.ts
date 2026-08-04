@@ -1,5 +1,11 @@
 import "server-only";
 
+import {
+  evaluarDocumentacion,
+  resumenDocumentacion,
+  type DocumentoCargado,
+  type TipoCliente,
+} from "@/lib/documentacion";
 import { hoyEnBA, sumarDias } from "@/lib/fecha";
 import { agruparPorPagar, type CuotaPorPagar, type Grupo, type Semaforo } from "@/lib/por-pagar";
 import { calcularResumen, type Resumen } from "@/lib/resumen";
@@ -67,6 +73,10 @@ export type FilaCliente = {
   semaforo: Semaforo;
   esManual: boolean;
   debe: number;
+  tipo: TipoCliente | null;
+  /** Resumen de la documentación, listo para mostrar. */
+  papeles: string;
+  papelesOk: boolean;
 };
 
 export type DatosClientes = { clientes: FilaCliente[]; error: string | null };
@@ -74,15 +84,16 @@ export type DatosClientes = { clientes: FilaCliente[]; error: string | null };
 export async function traerClientes(): Promise<DatosClientes> {
   const supabase = await createClient();
 
-  const [clientesRes, impagasRes] = await Promise.all([
+  const [clientesRes, impagasRes, docsRes] = await Promise.all([
     supabase
       .from("clientes")
-      .select("id,nombre,telefono,semaforo_efectivo,semaforo_manual")
+      .select("id,nombre,telefono,tipo,semaforo_efectivo,semaforo_manual")
       .limit(2000),
     traerImpagas(supabase),
+    supabase.from("documentos").select("id,cliente_id,tipo,periodo,subido_el").limit(5000),
   ]);
 
-  const error = clientesRes.error?.message ?? impagasRes.error;
+  const error = clientesRes.error?.message ?? impagasRes.error ?? docsRes.error?.message;
   if (error) return { clientes: [], error };
 
   const deuda = new Map<string, number>();
@@ -90,14 +101,38 @@ export async function traerClientes(): Promise<DatosClientes> {
     deuda.set(c.cliente_id, (deuda.get(c.cliente_id) ?? 0) + c.monto);
   }
 
-  const clientes: FilaCliente[] = (clientesRes.data ?? []).map((c) => ({
-    id: c.id as string,
-    nombre: c.nombre as string,
-    telefono: (c.telefono as string | null) ?? null,
-    semaforo: c.semaforo_efectivo as Semaforo,
-    esManual: c.semaforo_manual !== null,
-    debe: deuda.get(c.id as string) ?? 0,
-  }));
+  const docsPorCliente = new Map<string, DocumentoCargado[]>();
+  for (const d of docsRes.data ?? []) {
+    const clienteId = d.cliente_id as string;
+    const lista = docsPorCliente.get(clienteId) ?? [];
+    lista.push({
+      id: d.id as string,
+      tipo: d.tipo as DocumentoCargado["tipo"],
+      periodo: (d.periodo as string | null) ?? null,
+      subido_el: d.subido_el as string,
+    });
+    docsPorCliente.set(clienteId, lista);
+  }
+
+  const hoy = hoyEnBA();
+
+  const clientes: FilaCliente[] = (clientesRes.data ?? []).map((c) => {
+    const id = c.id as string;
+    const tipo = (c.tipo as TipoCliente | null) ?? null;
+    const evaluacion = evaluarDocumentacion(tipo, docsPorCliente.get(id) ?? [], hoy);
+
+    return {
+      id,
+      nombre: c.nombre as string,
+      telefono: (c.telefono as string | null) ?? null,
+      semaforo: c.semaforo_efectivo as Semaforo,
+      esManual: c.semaforo_manual !== null,
+      debe: deuda.get(id) ?? 0,
+      tipo,
+      papeles: resumenDocumentacion(evaluacion, tipo),
+      papelesOk: tipo !== null && evaluacion.completa && !evaluacion.hayDesactualizados,
+    };
+  });
 
   // Por orden, no por forma: los que hay que mirar primero, arriba (§9.3).
   clientes.sort(

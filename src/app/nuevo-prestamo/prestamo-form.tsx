@@ -6,6 +6,7 @@ import { fechaConDia, sumarDias } from "@/lib/fecha";
 import { formatARS, parseARS, repartirMonto } from "@/lib/money";
 
 import { crearPrestamo, type EstadoNuevoPrestamo } from "./actions";
+import { BuscadorDeCliente, type ClienteElegible } from "./buscador-cliente";
 
 const INICIAL: EstadoNuevoPrestamo = { error: null };
 
@@ -39,12 +40,13 @@ export function PrestamoForm({
   clientes,
   hoy,
 }: {
-  clientes: { id: string; nombre: string }[];
+  clientes: ClienteElegible[];
   hoy: string;
 }) {
   const [estado, accion, enviando] = useActionState(crearPrestamo, INICIAL);
 
-  const [clienteId, setClienteId] = useState(clientes[0]?.id ?? "");
+  const [cliente, setCliente] = useState<ClienteElegible | null>(null);
+  const clienteId = cliente?.id ?? "";
   const [capitalTexto, setCapitalTexto] = useState("");
   const [totalTexto, setTotalTexto] = useState("");
   const [cuotas, setCuotas] = useState(1);
@@ -78,22 +80,23 @@ export function PrestamoForm({
       <input type="hidden" name="frecuencia" value={frecuencia} />
 
       <section className="rounded-xl bg-card p-5">
-        <label htmlFor="cliente" className="text-[0.9375rem] font-semibold text-foreground">
-          ¿A quién le prestás?
-        </label>
-        <select
-          id="cliente"
-          value={clienteId}
-          onChange={(e) => setClienteId(e.target.value)}
-          disabled={enviando}
-          className="mt-2 h-12 w-full rounded-lg border border-border bg-background px-4 text-base text-foreground"
-        >
-          {clientes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre}
-            </option>
-          ))}
-        </select>
+        <p className="text-[0.9375rem] font-semibold text-foreground">¿A quién le prestás?</p>
+
+        <BuscadorDeCliente
+          clientes={clientes}
+          elegido={cliente}
+          alElegir={setCliente}
+          deshabilitado={enviando}
+        />
+
+        {/* El aviso de papeles va acá y no en la ficha: este es el momento en
+            que importa, justo antes de poner la plata. Informa, NUNCA bloquea —
+            la decisión de prestar la toma ella con datos que la app no tiene. */}
+        {cliente && cliente.papeles && !cliente.papelesOk ? (
+          <p className="mt-3 rounded-lg bg-surface-raised px-4 py-3 text-[0.8125rem] font-medium text-warning">
+            {cliente.papeles}. Podés prestarle igual.
+          </p>
+        ) : null}
       </section>
 
       <section className="rounded-xl bg-card p-5">
