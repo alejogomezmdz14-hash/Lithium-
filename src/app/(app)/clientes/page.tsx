@@ -94,10 +94,10 @@ export default async function ClientesPage() {
 
                 <ul className="mt-2 flex flex-col gap-2">
                   {grupo.map((cliente) => (
-                    <li key={cliente.id}>
+                    <li key={cliente.id} className="overflow-hidden rounded-xl">
                       <Link
                         href={`/clientes/${cliente.id}`}
-                        className="flex items-center gap-3 rounded-xl bg-card px-4 py-3.5"
+                        className="flex items-center gap-3 bg-card px-4 py-3.5"
                       >
                         <Avatar nombre={cliente.nombre} />
 
@@ -122,22 +122,48 @@ export default async function ClientesPage() {
                           </p>
                         </div>
 
-                        <div className="shrink-0 text-right">
-                          {cliente.debe > 0 ? (
-                            <>
-                              <p className="font-mono text-[0.875rem] font-medium tabular-nums text-foreground">
-                                {formatARS(cliente.debe)}
+                        <div className="flex shrink-0 items-center gap-2 text-right">
+                          <div>
+                            {cliente.debe > 0 ? (
+                              <>
+                                <p className="font-mono text-[0.875rem] font-medium tabular-nums text-foreground">
+                                  {formatARS(cliente.debe)}
+                                </p>
+                                <p className="mt-0.5 text-[0.8125rem] font-medium text-muted-foreground">
+                                  te debe
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-[0.8125rem] font-medium text-muted-foreground">
+                                no te debe
                               </p>
-                              <p className="mt-0.5 text-[0.8125rem] font-medium text-muted-foreground">
-                                te debe
-                              </p>
-                            </>
-                          ) : (
-                            <p className="text-[0.8125rem] font-medium text-muted-foreground">
-                              no te debe
-                            </p>
-                          )}
+                            )}
+                          </div>
+                          {/* Que se vea que la fila se toca. Sin esto nadie
+                              descubre que adentro está la documentación. */}
+                          <span aria-hidden className="text-[1.0625rem] text-muted-subtle">
+                            ›
+                          </span>
                         </div>
+                      </Link>
+
+                      {/* La documentación sale a la superficie: es el motivo por
+                          el que se entra a la ficha, y enterrada dos niveles
+                          abajo no la encontraba nadie. */}
+                      <Link
+                        href={`/clientes/${cliente.id}`}
+                        className={`mt-px flex items-center justify-between gap-3 rounded-b-xl px-4 py-3 ${
+                          cliente.papelesOk
+                            ? "bg-card text-muted-foreground"
+                            : "bg-surface-raised text-warning"
+                        }`}
+                      >
+                        <span className="text-[0.8125rem] font-medium">
+                          Papeles: {cliente.papeles}
+                        </span>
+                        <span className="shrink-0 text-[0.8125rem] font-semibold text-primary-text">
+                          {cliente.papelesOk ? "Ver" : "Subir documentos ›"}
+                        </span>
                       </Link>
                     </li>
                   ))}

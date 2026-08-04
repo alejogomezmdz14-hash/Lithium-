@@ -115,31 +115,9 @@ export default async function FichaCliente({ params }: Props) {
         </section>
       </div>
 
-      {cliente.notas ? (
-        <section className="mt-2 rounded-xl bg-card p-5">
-          <h2 className="text-[0.8125rem] font-medium text-muted-foreground">Observaciones</h2>
-          <p className="mt-1 text-[0.9375rem] font-medium text-foreground">{cliente.notas}</p>
-        </section>
-      ) : null}
-
-      {cliente.garante_nombre || cliente.garante_telefono ? (
-        <section className="mt-2 rounded-xl bg-card p-5">
-          <h2 className="text-[0.8125rem] font-medium text-muted-foreground">Garante</h2>
-          <p className="mt-1 text-[0.9375rem] font-semibold text-foreground">
-            {cliente.garante_nombre ?? "Sin nombre"}
-          </p>
-          {cliente.garante_telefono ? (
-            <a
-              href={`tel:${cliente.garante_telefono}`}
-              className="inline-flex h-12 items-center text-[0.8125rem] font-medium text-primary-text"
-            >
-              {cliente.garante_telefono}
-            </a>
-          ) : null}
-        </section>
-      ) : null}
-
-      {/* ---------------------------------------------------------------- */}
+      {/* La documentación va ARRIBA de las observaciones y el garante: es el
+          motivo por el que se entra a esta pantalla, y abajo de todo no la
+          encontraba nadie. */}
       <section className="mt-7">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
@@ -266,6 +244,30 @@ export default async function FichaCliente({ params }: Props) {
           </div>
         ) : null}
       </section>
+
+      {cliente.notas ? (
+        <section className="mt-7 rounded-xl bg-card p-5">
+          <h2 className="text-[0.8125rem] font-medium text-muted-foreground">Observaciones</h2>
+          <p className="mt-1 text-[0.9375rem] font-medium text-foreground">{cliente.notas}</p>
+        </section>
+      ) : null}
+
+      {cliente.garante_nombre || cliente.garante_telefono ? (
+        <section className="mt-2 rounded-xl bg-card p-5">
+          <h2 className="text-[0.8125rem] font-medium text-muted-foreground">Garante</h2>
+          <p className="mt-1 text-[0.9375rem] font-semibold text-foreground">
+            {cliente.garante_nombre ?? "Sin nombre"}
+          </p>
+          {cliente.garante_telefono ? (
+            <a
+              href={`tel:${cliente.garante_telefono}`}
+              className="inline-flex h-12 items-center text-[0.8125rem] font-medium text-primary-text"
+            >
+              {cliente.garante_telefono}
+            </a>
+          ) : null}
+        </section>
+      ) : null}
     </main>
   );
 }
