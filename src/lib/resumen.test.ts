@@ -19,7 +19,94 @@ const cuota = (o: Partial<CuotaResumen> = {}): CuotaResumen => ({
   cliente_id: "a",
   cliente_nombre: "A",
   cliente_semaforo: "verde",
+  credito_id: "c1",
   ...o,
+});
+
+describe("capital vs interes de lo que falta cobrar", () => {
+  it("separa cuanto es TU plata volviendo y cuanto es ganancia", () => {
+    // Presta 400.000, le devuelven 520.000 en 2 cuotas de 260.000.
+    // De cada cuota, 400/520 = 76,9% es capital.
+    const r = calcularResumen(
+      [credito({ id: "c1", monto: 400000, monto_total: 520000, con_interes: true })],
+      [
+        cuota({ credito_id: "c1", monto: 260000 }),
+        cuota({ credito_id: "c1", monto: 260000 }),
+      ],
+      HOY,
+    );
+    expect(r.meDeben).toBe(520000);
+    expect(r.capitalEnLaCalle).toBe(400000);
+    expect(r.interesPorCobrar).toBe(120000);
+  });
+
+  it("si ya cobro una cuota, baja proporcionalmente de los dos", () => {
+    const r = calcularResumen(
+      [credito({ id: "c1", monto: 400000, monto_total: 520000, con_interes: true })],
+      [cuota({ credito_id: "c1", monto: 260000 })],
+      HOY,
+    );
+    expect(r.capitalEnLaCalle).toBe(200000);
+    expect(r.interesPorCobrar).toBe(60000);
+  });
+
+  it("sin interes, todo lo que falta es capital", () => {
+    const r = calcularResumen(
+      [credito({ id: "c1", monto: 120000, monto_total: 120000, con_interes: false })],
+      [cuota({ credito_id: "c1", monto: 120000 })],
+      HOY,
+    );
+    expect(r.capitalEnLaCalle).toBe(120000);
+    expect(r.interesPorCobrar).toBe(0);
+  });
+
+  it("capital + interes siempre da lo que le deben", () => {
+    const r = calcularResumen(
+      [
+        credito({ id: "c1", monto: 400000, monto_total: 520000, con_interes: true }),
+        credito({ id: "c2", monto: 300000, monto_total: 300000, con_interes: false }),
+      ],
+      [
+        cuota({ credito_id: "c1", monto: 520000, cliente_id: "a" }),
+        cuota({ credito_id: "c2", monto: 300000, cliente_id: "b" }),
+      ],
+      HOY,
+    );
+    expect(r.capitalEnLaCalle + r.interesPorCobrar).toBe(r.meDeben);
+  });
+});
+
+describe("cuenta de personas", () => {
+  it("cuenta personas distintas que deben, no cuotas", () => {
+    const r = calcularResumen(
+      [],
+      [
+        cuota({ cliente_id: "a" }),
+        cuota({ cliente_id: "a" }),
+        cuota({ cliente_id: "b" }),
+      ],
+      HOY,
+    );
+    expect(r.personasQueDeben).toBe(2);
+  });
+
+  it("cuenta a cuanta gente le presto este mes", () => {
+    const r = calcularResumen(
+      [
+        credito({ id: "c1", fecha_otorgado: HOY }),
+        credito({ id: "c2", fecha_otorgado: HOY }),
+        credito({ id: "c3", fecha_otorgado: "2026-06-01" }), // otro mes
+      ],
+      [],
+      HOY,
+      new Map([
+        ["c1", "ana"],
+        ["c2", "ana"], // dos prestamos a la misma persona = 1 persona
+        ["c3", "beto"],
+      ]),
+    );
+    expect(r.prestadoEsteMes.personas).toBe(1);
+  });
 });
 
 describe("prestado este mes", () => {

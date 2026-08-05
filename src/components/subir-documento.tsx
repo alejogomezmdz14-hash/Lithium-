@@ -142,27 +142,44 @@ export function BotonSubir({ clienteId, tipo, etiqueta, pidePeriodo }: Props) {
         ref={inputRef}
         id={idInput}
         type="file"
-        // `capture` abre la cámara directo en el celular, que es el caso real:
-        // está parada en la puerta sacándole una foto al papel.
+        // SIN `capture`: con ese atributo el celular abre la cámara directo y no
+        // deja elegir un PDF ni una foto ya sacada. Sin él, el sistema ofrece
+        // las dos cosas — cámara y archivos — que es lo que hace falta.
         accept="image/*,application/pdf"
-        capture="environment"
         onChange={alElegir}
         disabled={trabajando}
         className="sr-only"
       />
 
+      {/* Grande, con ícono de clip y diciendo que acepta foto o PDF: el botón
+          chico no leía como "adjuntar un archivo" y no se encontraba. */}
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={trabajando}
-        className="h-12 w-full rounded-full bg-primary text-[0.8125rem] font-semibold text-primary-foreground disabled:opacity-60"
+        className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-primary text-[0.9375rem] font-semibold text-primary-foreground disabled:opacity-60"
       >
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden
+          className="size-[19px] shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.75}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+        </svg>
         {estado === "procesando"
-          ? "Preparando la foto…"
+          ? "Preparando el archivo…"
           : estado === "subiendo"
             ? "Subiendo…"
-            : `Subir ${etiqueta.toLowerCase()}`}
+            : `Adjuntar ${etiqueta.toLowerCase()}`}
       </button>
+      <p className="mt-1.5 text-center text-[0.8125rem] font-medium text-muted-foreground">
+        Sacá una foto o elegí un PDF del teléfono
+      </p>
 
       <p
         role="alert"

@@ -17,6 +17,7 @@ const ORDEN_SEMAFORO: Record<Semaforo, number> = { rojo: 0, naranja: 1, nuevo: 2
 type CuotaImpagaCruda = {
   monto: number | string;
   fecha_cobro: string;
+  credito_id: string;
   creditos: { clientes: { id: string; nombre: string; semaforo_efectivo: Semaforo } };
 };
 
@@ -24,7 +25,9 @@ type CuotaImpagaCruda = {
 async function traerImpagas(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data, error } = await supabase
     .from("cuotas")
-    .select("monto,fecha_cobro,creditos!inner(clientes!inner(id,nombre,semaforo_efectivo))")
+    .select(
+      "monto,fecha_cobro,credito_id,creditos!inner(clientes!inner(id,nombre,semaforo_efectivo))",
+    )
     .is("pagado_el", null)
     .limit(2000);
 
@@ -33,6 +36,7 @@ async function traerImpagas(supabase: Awaited<ReturnType<typeof createClient>>) 
   const filas = ((data ?? []) as unknown as CuotaImpagaCruda[]).map((f) => ({
     monto: Number(f.monto),
     fecha_cobro: f.fecha_cobro,
+    credito_id: f.credito_id,
     cliente_id: f.creditos.clientes.id,
     cliente_nombre: f.creditos.clientes.nombre,
     cliente_semaforo: f.creditos.clientes.semaforo_efectivo,
@@ -47,7 +51,10 @@ export async function traerResumen(): Promise<DatosResumen> {
   const hoy = hoyEnBA();
 
   const [creditosRes, impagasRes] = await Promise.all([
-    supabase.from("creditos").select("id,monto,monto_total,con_interes,fecha_otorgado").limit(2000),
+    supabase
+      .from("creditos")
+      .select("id,cliente_id,monto,monto_total,con_interes,fecha_otorgado")
+      .limit(2000),
     traerImpagas(supabase),
   ]);
 
@@ -63,7 +70,15 @@ export async function traerResumen(): Promise<DatosResumen> {
     fecha_otorgado: c.fecha_otorgado as string,
   }));
 
-  return { hoy, resumen: calcularResumen(creditos, impagasRes.filas, hoy), error: null };
+  const clientePorCredito = new Map(
+    (creditosRes.data ?? []).map((c) => [c.id as string, c.cliente_id as string]),
+  );
+
+  return {
+    hoy,
+    resumen: calcularResumen(creditos, impagasRes.filas, hoy, clientePorCredito),
+    error: null,
+  };
 }
 
 export type FilaCliente = {

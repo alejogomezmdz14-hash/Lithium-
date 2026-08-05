@@ -21,6 +21,8 @@ export type CuotaResumen = {
   cliente_id: string;
   cliente_nombre: string;
   cliente_semaforo: Semaforo;
+  /** Del crédito al que pertenece. Sirve para separar capital de interés. */
+  credito_id: string;
 };
 
 export type Deudor = {
@@ -34,9 +36,23 @@ export type Deudor = {
 
 export type Resumen = {
   /** Capital que salió a la calle este mes, partido por tipo. */
-  prestadoEsteMes: { conInteres: number; sinInteres: number; total: number };
+  prestadoEsteMes: {
+    conInteres: number;
+    sinInteres: number;
+    total: number;
+    /** A cuánta gente distinta le prestó este mes. Ella cuenta personas. */
+    personas: number;
+  };
   /** Lo que va a entrar de más por los préstamos con interés de este mes. */
   interesEsteMes: number;
+  /**
+   * La plata partida en dos, que es lo que hace falta para saber cómo va el
+   * negocio: cuánto CAPITAL sigue afuera, y cuánto de lo que deben es interés.
+   */
+  capitalEnLaCalle: number;
+  interesPorCobrar: number;
+  /** Cuánta gente le debe hoy. */
+  personasQueDeben: number;
   /** Deuda viva: todo lo impago, venza cuando venza. */
   meDeben: number;
   vencido: { monto: number; cuotas: number; personas: number };
@@ -49,6 +65,8 @@ export function calcularResumen(
   creditos: readonly CreditoResumen[],
   impagas: readonly CuotaResumen[],
   hoy: string,
+  /** Personas por crédito, para contar a cuánta gente le prestó este mes. */
+  clientePorCredito: ReadonlyMap<string, string> = new Map(),
 ): Resumen {
   const desde = inicioDeMes(hoy);
   const delMes = creditos.filter((c) => c.fecha_otorgado >= desde && c.fecha_otorgado <= hoy);
@@ -81,13 +99,36 @@ export function calcularResumen(
     porPersona.set(c.cliente_id, fila);
   }
 
+  // Separar capital de interés en lo que falta cobrar. Cada crédito tiene una
+  // proporción propia: si te devuelve 520 sobre 400 prestados, el 23% de cada
+  // peso que entra es ganancia y el resto es tu plata volviendo.
+  const porCredito = new Map(creditos.map((c) => [c.id, c]));
+  let capitalEnLaCalle = 0;
+  let interesPorCobrar = 0;
+  for (const cuota of impagas) {
+    const credito = porCredito.get(cuota.credito_id);
+    if (!credito || credito.monto_total <= 0) {
+      capitalEnLaCalle += cuota.monto;
+      continue;
+    }
+    const proporcionCapital = credito.monto / credito.monto_total;
+    capitalEnLaCalle += cuota.monto * proporcionCapital;
+    interesPorCobrar += cuota.monto * (1 - proporcionCapital);
+  }
+
   return {
     prestadoEsteMes: {
       conInteres: capitalCon,
       sinInteres: capitalSin,
       total: capitalCon + capitalSin,
+      personas: new Set(
+        delMes.map((c) => clientePorCredito.get(c.id)).filter((x): x is string => Boolean(x)),
+      ).size,
     },
     interesEsteMes: suma(conInteres, "monto_total") - capitalCon,
+    capitalEnLaCalle: Math.round(capitalEnLaCalle),
+    interesPorCobrar: Math.round(interesPorCobrar),
+    personasQueDeben: new Set(impagas.map((c) => c.cliente_id)).size,
     meDeben: impagas.reduce((a, c) => a + c.monto, 0),
     vencido: {
       monto: vencidas.reduce((a, c) => a + c.monto, 0),

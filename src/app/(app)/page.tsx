@@ -36,6 +36,32 @@ export default async function ResumenPage() {
           <p className="mt-1 text-[2.125rem] font-semibold leading-[1.05] tracking-[-0.02em] tabular-nums text-foreground">
             {formatARS(meDeben)}
           </p>
+          <p className="mt-1 text-[0.8125rem] font-medium text-muted-foreground">
+            {resumen.personasQueDeben === 1
+              ? "1 persona"
+              : `${resumen.personasQueDeben} personas`}
+          </p>
+
+          {/* De esa plata, cuánta es TU capital volviendo y cuánta es ganancia.
+              Es la diferencia entre "tengo 2,8 millones afuera" y "gano 800 mil". */}
+          <dl className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-[0.8125rem] font-medium text-muted-foreground">
+                Tu capital en la calle
+              </dt>
+              <dd className="font-mono text-[0.875rem] tabular-nums text-foreground">
+                {formatARS(resumen.capitalEnLaCalle)}
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-[0.8125rem] font-medium text-muted-foreground">
+                Interés por cobrar
+              </dt>
+              <dd className="font-mono text-[0.875rem] tabular-nums text-foreground">
+                {formatARS(resumen.interesPorCobrar)}
+              </dd>
+            </div>
+          </dl>
         </section>
 
         <section className="col-span-2 rounded-xl bg-card p-5">
@@ -62,6 +88,13 @@ export default async function ResumenPage() {
         </h2>
         <p className="mt-1 text-[1.375rem] font-semibold leading-[1.1] tracking-[-0.01em] tabular-nums text-foreground">
           {formatARS(prestadoEsteMes.total)}
+        </p>
+        <p className="mt-1 text-[0.8125rem] font-medium text-muted-foreground">
+          {prestadoEsteMes.personas === 0
+            ? "Todavía no le prestaste a nadie"
+            : prestadoEsteMes.personas === 1
+              ? "a 1 persona"
+              : `a ${prestadoEsteMes.personas} personas`}
         </p>
 
         <dl className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
