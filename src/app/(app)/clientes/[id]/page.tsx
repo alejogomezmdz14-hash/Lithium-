@@ -31,7 +31,7 @@ export default async function FichaCliente({ params }: Props) {
   const { id } = await params;
   const supabase = await createClient();
 
-  const [clienteRes, docsRes, cuotasRes] = await Promise.all([
+  const [clienteRes, docsRes, cuotasRes, prestamosRes] = await Promise.all([
     supabase
       .from("clientes")
       .select("id,nombre,telefono,notas,tipo,semaforo_efectivo,semaforo_manual,garante_nombre,garante_telefono")
@@ -47,6 +47,11 @@ export default async function FichaCliente({ params }: Props) {
       .select("monto,fecha_cobro,creditos!inner(cliente_id)")
       .eq("creditos.cliente_id", id)
       .is("pagado_el", null),
+    supabase
+      .from("creditos")
+      .select("id,monto_total,fecha_otorgado")
+      .eq("cliente_id", id)
+      .order("fecha_otorgado", { ascending: false }),
   ]);
 
   if (clienteRes.error || !clienteRes.data) notFound();
@@ -71,6 +76,7 @@ export default async function FichaCliente({ params }: Props) {
   const hoy = hoyEnBA();
   const evaluacion = evaluarDocumentacion(cliente.tipo, documentos, hoy);
   const debe = (cuotasRes.data ?? []).reduce((s, c) => s + Number(c.monto), 0);
+  const prestamos = (prestamosRes.data ?? []) as { id: string; monto_total: number | string }[];
 
   return (
     <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-5">
@@ -107,6 +113,21 @@ export default async function FichaCliente({ params }: Props) {
           <p className="mt-1 text-[1.375rem] font-semibold leading-[1.1] tracking-[-0.01em] tabular-nums text-foreground">
             {formatARS(debe)}
           </p>
+          {prestamos.length > 0 ? (
+            <ul className="mt-3 flex flex-col gap-1 border-t border-border pt-3">
+              {prestamos.map((p) => (
+                <li key={p.id}>
+                  <Link
+                    href={`/prestamo/${p.id}`}
+                    className="flex items-baseline justify-between gap-2 text-[0.8125rem] font-medium text-primary-text"
+                  >
+                    <span>Ver el préstamo</span>
+                    <span className="tabular-nums">{formatARS(Number(p.monto_total))} ›</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </section>
         <section className="col-span-2 rounded-xl bg-card p-5">
           <h2 className="text-[0.8125rem] font-medium text-muted-foreground">Tipo</h2>

@@ -111,12 +111,12 @@ function Fila({
 
       <div className="flex items-start justify-between gap-3 px-4 py-3.5">
         <div className="min-w-0 flex-1">
-          {/* TODO: link a /prestamo/[creditoId] cuando exista el detalle. Por
-              ahora va como texto: un nombre clickeable que lleva a un 404 es
-              peor que uno que no se puede tocar. */}
-          <p className="truncate text-[0.9375rem] font-semibold tracking-[-0.006em] text-foreground">
-            {persona.nombre}
-          </p>
+          <Link
+            href={`/prestamo/${persona.cuotas[0].credito_id}`}
+            className="block truncate text-[0.9375rem] font-semibold tracking-[-0.006em] text-foreground"
+          >
+            {persona.nombre} ›
+          </Link>
 
           <p
             className={`mt-0.5 text-[0.8125rem] font-medium tabular-nums ${
