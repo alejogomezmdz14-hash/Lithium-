@@ -129,6 +129,94 @@ export async function reprogramarPlan(
   return { error: null };
 }
 
+/**
+ * Editar TODO un préstamo ya creado: capital, tasa, total, cuotas y fechas.
+ *
+ * Lo que ya se cobró es un hecho y no se toca. El plan nuevo se arma con lo que
+ * falta: `saldo = totalNuevo − yaCobrado`. Así `Σ cuotas === monto_total` sigue
+ * cerrando exacto aunque se cambie el total a mitad de camino.
+ */
+export async function editarPrestamo(datos: {
+  creditoId: string;
+  capital: number;
+  total: number;
+  tasaMensual: number | null;
+  cuotas: number;
+  primeraFecha: string;
+  frecuencia: string;
+}): Promise<{ error: string | null }> {
+  const { supabase, user } = await sesion();
+  if (!user) return { error: "Se te venció la sesión. Entrá de nuevo." };
+
+  const { capital, total, cuotas: cantidad } = datos;
+  if (capital <= 0) return { error: "El capital tiene que ser mayor a cero." };
+  if (total < capital) return { error: "Te tiene que devolver al menos lo que le prestaste." };
+  if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > 60) {
+    return { error: "Elegí entre 1 y 60 cuotas." };
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(datos.primeraFecha)) return { error: "Esa fecha no es válida." };
+
+  const { data: existentes, error: errorCuotas } = await supabase
+    .from("cuotas")
+    .select("id,numero,monto,pagado_el")
+    .eq("credito_id", datos.creditoId)
+    .order("numero");
+  if (errorCuotas || !existentes) return { error: "No se pudo leer el préstamo." };
+
+  const cobradas = existentes.filter((c) => c.pagado_el !== null);
+  const impagas = existentes.filter((c) => c.pagado_el === null);
+  const yaCobrado = cobradas.reduce((s, c) => s + Number(c.monto), 0);
+  const saldo = total - yaCobrado;
+
+  if (saldo <= 0) {
+    return {
+      error: `Ya le cobraste ${yaCobrado.toLocaleString("es-AR")}. Con ese total no quedaría nada por cobrar.`,
+    };
+  }
+
+  const { error: errorCredito } = await supabase
+    .from("creditos")
+    .update({
+      monto: capital,
+      monto_total: total,
+      con_interes: total > capital,
+      tasa: total > capital ? datos.tasaMensual : null,
+    })
+    .eq("id", datos.creditoId);
+  if (errorCredito) return { error: `No se pudo guardar: ${errorCredito.message}` };
+
+  if (impagas.length > 0) {
+    const { error } = await supabase
+      .from("cuotas")
+      .delete()
+      .in(
+        "id",
+        impagas.map((c) => c.id),
+      );
+    if (error) return { error: `No se pudieron rehacer las cuotas: ${error.message}` };
+  }
+
+  const montos = repartirMonto(saldo, cantidad);
+  const cada = DIAS[datos.frecuencia] ?? 30;
+  const desde = cobradas.length;
+
+  const { error: errorInsert } = await supabase.from("cuotas").insert(
+    montos.map((monto, i) => ({
+      credito_id: datos.creditoId,
+      numero: desde + i + 1,
+      monto,
+      fecha_cobro: sumarDias(datos.primeraFecha, i * cada),
+    })),
+  );
+  if (errorInsert) return { error: `No se pudieron crear las cuotas: ${errorInsert.message}` };
+
+  revalidatePath(`/prestamo/${datos.creditoId}`);
+  revalidatePath("/por-pagar");
+  revalidatePath("/clientes");
+  revalidatePath("/");
+  return { error: null };
+}
+
 /** Deshacer un cobro. Vuelve la cuota a impaga. */
 export async function deshacerCobro(cuotaId: string): Promise<{ error: string | null }> {
   const { supabase, user } = await sesion();

@@ -98,6 +98,11 @@ export default async function DetallePrestamo({ params }: Props) {
               {cobradas.length} de {cuotas.length} cobradas
               {tarde > 0 ? ` · ${tarde} ${tarde === 1 ? "llegó tarde" : "llegaron tarde"}` : ""}
             </p>
+            {saldo === 0 ? (
+              <p className="mt-2 text-[0.9375rem] font-semibold text-success">
+                ✓ Terminado. Te pagó todo.
+              </p>
+            ) : null}
           </>
         ) : null}
       </section>
@@ -161,19 +166,22 @@ export default async function DetallePrestamo({ params }: Props) {
                   {cobrada ? <DeshacerCobro cuotaId={cuota.id} /> : null}
                 </div>
 
-                {/* La acción vive pegada a la fila que modifica: así no se puede
-                    equivocar de cuota (§9.12). */}
+                {/* Botón en TODAS las impagas, no solo en la siguiente: pasa que
+                    te pagan la 2 antes que la 1, y obligarla a ir en orden la
+                    manda de vuelta al cuaderno. */}
                 {!cobrada ? (
                   <div className="flex w-full flex-wrap items-center gap-2">
                     <CambiarFecha cuotaId={cuota.id} fecha={cuota.fecha_cobro} />
-                    {esLaQueSigue ? (
-                      <Link
-                        href={`/cobrar/${cuota.id}`}
-                        className="ml-auto flex h-12 items-center rounded-full bg-primary px-5 text-[0.8125rem] font-semibold text-primary-foreground"
-                      >
-                        Ya me pagó
-                      </Link>
-                    ) : null}
+                    <Link
+                      href={`/cobrar/${cuota.id}`}
+                      className={`ml-auto flex h-12 items-center rounded-full px-5 text-[0.8125rem] font-semibold ${
+                        esLaQueSigue
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-surface-raised text-primary-text"
+                      }`}
+                    >
+                      Ya me pagó
+                    </Link>
                   </div>
                 ) : null}
               </div>
