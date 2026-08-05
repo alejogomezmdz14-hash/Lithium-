@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/alertas",
+      "comment": "12:00 UTC = 9:00 en Argentina. Los crons de Vercel corren en UTC.",
+      "schedule": "0 12 * * *"
+    }
+  ]
+}
