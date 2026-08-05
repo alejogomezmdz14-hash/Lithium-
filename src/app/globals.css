@@ -91,4 +91,14 @@
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
   }
+
+  /* Un botón es para tocar, no para seleccionar su texto. Sin esto, tocarlo
+     dos veces seguidas en el celular lo deja pintado de azul y parece roto. */
+  button,
+  [role="button"],
+  label {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
 }

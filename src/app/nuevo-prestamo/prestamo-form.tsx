@@ -33,7 +33,9 @@ function Pill({
     <button
       type="button"
       onClick={onClick}
-      className={`h-12 shrink-0 rounded-full px-4 text-[0.8125rem] font-semibold ${
+      // select-none: sin esto, tocar varias veces seguidas selecciona el texto
+      // y el chip queda pintado de azul como si estuviera roto.
+      className={`h-12 shrink-0 select-none rounded-full px-4 text-[0.8125rem] font-semibold ${
         activo ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"
       }`}
     >
@@ -55,21 +57,55 @@ export function PrestamoForm({
   const [altaAbierta, setAltaAbierta] = useState(false);
   const clienteId = cliente?.id ?? "";
   const [capitalTexto, setCapitalTexto] = useState("");
-  const [totalTexto, setTotalTexto] = useState("");
   const [cuotas, setCuotas] = useState(1);
   const [primeraFecha, setPrimeraFecha] = useState(sumarDias(hoy, 30));
   const [frecuencia, setFrecuencia] = useState("mensual");
+
+  /**
+   * Se puede escribir el MONTO o el PORCENTAJE, cualquiera de los dos.
+   *
+   * `fuente` dice cuál escribió ella última; el otro se calcula. Así nunca se
+   * reescribe el campo que está tocando, que es lo que hacía saltar el número
+   * abajo del cursor.
+   *
+   * Y el porcentaje se guarda aunque todavía no haya puesto el capital: antes
+   * tocar "30%" con el monto vacío no hacía absolutamente nada, en silencio.
+   * Ahora queda elegido y el total aparece solo apenas escribe cuánto presta.
+   */
+  const [fuente, setFuente] = useState<"monto" | "porcentaje">("porcentaje");
+  const [montoTexto, setMontoTexto] = useState("");
+  const [pctTexto, setPctTexto] = useState("");
+
   const capital = parseARS(capitalTexto) ?? 0;
-  const total = parseARS(totalTexto) ?? 0;
+  const pctEscrito = Number(pctTexto.replace(",", "."));
+  const pctValido = pctTexto.trim() !== "" && Number.isFinite(pctEscrito) && pctEscrito >= 0;
+
+  // El total es la fuente de verdad que se guarda (monto_total, §2).
+  const total =
+    fuente === "porcentaje" && capital > 0 && pctValido
+      ? Math.round(capital * (1 + pctEscrito / 100))
+      : (parseARS(montoTexto) ?? 0);
+
+  const porcentaje =
+    fuente === "porcentaje" && pctValido
+      ? pctEscrito
+      : capital > 0 && total > 0
+        ? Math.round((total / capital - 1) * 1000) / 10
+        : 0;
+
   const interes = total > capital ? total - capital : 0;
-  // El % ya no es un campo editable: se muestra como resultado. Con un solo
-  // input no hay "eco" posible — el problema de que A escriba en B y B en A
-  // desaparece porque ya no hay dos campos que se escriban entre sí.
-  const porcentaje = capital > 0 && total > 0 ? Math.round((total / capital - 1) * 1000) / 10 : 0;
+
+  // Lo que se manda al servidor, siempre el total calculado.
+  const totalTexto = total > 0 ? String(total) : "";
+
+  // Lo que se ve en cada campo: el que NO está escribiendo muestra el derivado.
+  const montoMostrado =
+    fuente === "monto" ? montoTexto : total > 0 ? formatARS(total).replace("$", "") : "";
+  const pctMostrado = fuente === "porcentaje" ? pctTexto : porcentaje > 0 ? String(porcentaje) : "";
 
   const aplicarPorcentaje = (p: number) => {
-    if (capital <= 0) return;
-    setTotalTexto(formatARS(Math.round(capital * (1 + p / 100))).replace("$", ""));
+    setFuente("porcentaje");
+    setPctTexto(String(p));
   };
 
   const preview = capital > 0 && total >= capital ? repartirMonto(total, cuotas) : [];
@@ -185,12 +221,14 @@ export function PrestamoForm({
           ¿Cuánto te tiene que devolver?
         </p>
 
-        {/* Los chips resuelven el 90% de los casos sin tipear nada (§9.14). */}
+        {/* Los chips resuelven el 90% de los casos sin tipear nada. Funcionan
+            aunque el capital esté vacío: queda elegido el %, y el total aparece
+            solo apenas se escribe cuánto presta. */}
         <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
           {PORCENTAJES.map((p) => (
             <Pill
               key={p}
-              activo={capital > 0 && Math.abs(porcentaje - p) < 0.05}
+              activo={fuente === "porcentaje" && pctValido && Math.abs(pctEscrito - p) < 0.05}
               onClick={() => aplicarPorcentaje(p)}
             >
               {p === 0 ? "Sin interés" : `${p}%`}
@@ -198,31 +236,68 @@ export function PrestamoForm({
           ))}
         </div>
 
-        {/* UN solo campo, no dos. Antes había también un input de % editable que
-            se recalculaba solo, y eso obligaba a entender cuál manda: el número
-            real es la plata que tiene que devolver, y el % es solo una forma de
-            escribirlo rápido. Los chips ya lo resuelven. */}
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-background px-4">
-          <span className="font-mono text-[1.375rem] text-muted-foreground">$</span>
-          <input
-            id="total"
-            type="text"
-            inputMode="numeric"
-            value={totalTexto}
-            onChange={(e) => setTotalTexto(e.target.value)}
-            disabled={enviando}
-            placeholder="520.000"
-            className="h-14 w-full bg-transparent font-mono text-[1.375rem] tabular-nums text-foreground outline-none placeholder:text-muted-subtle"
-          />
+        {/* Se puede escribir cualquiera de los dos. El que no estás tocando se
+            calcula solo. */}
+        <div className="mt-4 flex items-end gap-3">
+          <div className="flex-[2]">
+            <label htmlFor="total" className="text-[0.8125rem] font-medium text-muted-foreground">
+              Te devuelve
+            </label>
+            <div className="mt-1 flex items-center gap-1 rounded-lg border border-border bg-background px-3">
+              <span className="font-mono text-[1.0625rem] text-muted-foreground">$</span>
+              <input
+                id="total"
+                type="text"
+                inputMode="numeric"
+                value={montoMostrado}
+                onChange={(e) => {
+                  setFuente("monto");
+                  setMontoTexto(e.target.value);
+                }}
+                disabled={enviando}
+                placeholder="520.000"
+                className="h-12 w-full bg-transparent font-mono text-[1.0625rem] tabular-nums text-foreground outline-none placeholder:text-muted-subtle"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1">
+            <label
+              htmlFor="porcentaje"
+              className="text-[0.8125rem] font-medium text-muted-foreground"
+            >
+              o el interés
+            </label>
+            <div className="mt-1 flex items-center rounded-lg border border-border bg-background px-3">
+              <input
+                id="porcentaje"
+                type="text"
+                inputMode="decimal"
+                value={pctMostrado}
+                onChange={(e) => {
+                  setFuente("porcentaje");
+                  setPctTexto(e.target.value);
+                }}
+                disabled={enviando}
+                placeholder="30"
+                className="h-12 w-full bg-transparent text-[1.0625rem] tabular-nums text-foreground outline-none placeholder:text-muted-subtle"
+              />
+              <span className="text-[1.0625rem] text-muted-foreground">%</span>
+            </div>
+          </div>
         </div>
+
+        <input type="hidden" name="total" value={totalTexto} />
 
         {/* El resultado dicho en castellano: el chequeo de sentido. */}
         <p className="mt-3 text-[0.8125rem] font-medium text-muted-foreground">
           {interes > 0
-            ? `Ganás ${formatARS(interes)} de interés${porcentaje > 0 ? ` (${porcentaje}%)` : ""}.`
+            ? `Ganás ${formatARS(interes)} de interés.`
             : capital > 0 && total > 0
               ? "Sin interés: te devuelve lo mismo que le prestás."
-              : "Tocá un porcentaje o escribí el monto."}
+              : capital <= 0
+                ? "Escribí arriba cuánto le prestás."
+                : "Tocá un porcentaje o escribí el monto."}
         </p>
       </section>
 
