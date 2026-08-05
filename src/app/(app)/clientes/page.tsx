@@ -152,7 +152,7 @@ export default async function ClientesPage() {
                           abajo no la encontraba nadie. */}
                       <Link
                         href={`/clientes/${cliente.id}`}
-                        className={`mt-px flex items-center justify-between gap-3 rounded-b-xl px-4 py-3 ${
+                        className={`mt-px flex items-center justify-between gap-3 px-4 py-3 ${
                           cliente.papelesOk
                             ? "bg-card text-muted-foreground"
                             : "bg-surface-raised text-warning"
@@ -165,6 +165,23 @@ export default async function ClientesPage() {
                           {cliente.papelesOk ? "Ver" : "Subir documentos ›"}
                         </span>
                       </Link>
+
+                      {/* Atajo al préstamo: es donde se pone el interés y las
+                          fechas, y con la cartera migrada del Excel es lo
+                          primero que hay que hacer con cada uno. */}
+                      {cliente.creditoId ? (
+                        <Link
+                          href={`/prestamo/${cliente.creditoId}`}
+                          className="mt-px flex items-center justify-between gap-3 rounded-b-xl bg-card px-4 py-3"
+                        >
+                          <span className="text-[0.8125rem] font-medium text-muted-foreground">
+                            {cliente.tieneInteres ? "Préstamo" : "Sin interés cargado"}
+                          </span>
+                          <span className="shrink-0 text-[0.8125rem] font-semibold text-primary-text">
+                            {cliente.tieneInteres ? "Ver ›" : "Poner el interés ›"}
+                          </span>
+                        </Link>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

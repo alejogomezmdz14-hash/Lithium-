@@ -6,6 +6,7 @@ import { formatARS } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 
 import { CambiarFecha, DeshacerCobro, Reprogramar } from "./editar";
+import { EditarPrestamo } from "./editar-todo";
 
 export const metadata = { title: "Préstamo — Lithium" };
 
@@ -53,6 +54,7 @@ export default async function DetallePrestamo({ params }: Props) {
   const saldo = cuotas
     .filter((c) => c.pagado_el === null)
     .reduce((s, c) => s + Number(c.monto), 0);
+  const yaCobrado = cobradas.reduce((s, c) => s + Number(c.monto), 0);
   const siguiente = laQueSigue(cuotas);
   const tarde = cobradas.filter(
     (c) => estadoCuotaUI({ fecha_cobro: c.fecha_cobro, pagado_el: c.pagado_el }, hoy) === "cobrada_tarde",
@@ -106,6 +108,19 @@ export default async function DetallePrestamo({ params }: Props) {
           </>
         ) : null}
       </section>
+
+      {/* Primero lo que más falta con los datos migrados del Excel: ponerles el
+          interés y las fechas reales. Reprogramar queda abajo, para cuando el
+          préstamo ya está bien cargado y solo hay que correr las cuotas. */}
+      <EditarPrestamo
+        creditoId={credito.id}
+        capitalActual={Number(credito.monto)}
+        totalActual={Number(credito.monto_total)}
+        tasaActual={credito.tasa}
+        yaCobrado={yaCobrado}
+        cuotasImpagas={cuotas.length - cobradas.length}
+        hoy={hoy}
+      />
 
       <Reprogramar creditoId={credito.id} saldo={saldo} hoy={hoy} />
 

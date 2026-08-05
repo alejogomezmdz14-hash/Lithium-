@@ -92,6 +92,9 @@ export type FilaCliente = {
   /** Resumen de la documentación, listo para mostrar. */
   papeles: string;
   papelesOk: boolean;
+  /** Su préstamo más reciente, para poder ir directo a editarlo. */
+  creditoId: string | null;
+  tieneInteres: boolean;
 };
 
 export type DatosClientes = { clientes: FilaCliente[]; error: string | null };
@@ -99,17 +102,35 @@ export type DatosClientes = { clientes: FilaCliente[]; error: string | null };
 export async function traerClientes(): Promise<DatosClientes> {
   const supabase = await createClient();
 
-  const [clientesRes, impagasRes, docsRes] = await Promise.all([
+  const [clientesRes, impagasRes, docsRes, creditosRes] = await Promise.all([
     supabase
       .from("clientes")
       .select("id,nombre,telefono,tipo,semaforo_efectivo,semaforo_manual")
       .limit(2000),
     traerImpagas(supabase),
     supabase.from("documentos").select("id,cliente_id,tipo,periodo,subido_el").limit(5000),
+    supabase
+      .from("creditos")
+      .select("id,cliente_id,con_interes,fecha_otorgado")
+      .order("fecha_otorgado", { ascending: false })
+      .limit(3000),
   ]);
 
   const error = clientesRes.error?.message ?? impagasRes.error ?? docsRes.error?.message;
   if (error) return { clientes: [], error };
+
+  // El más reciente de cada persona: la lista viene ordenada por fecha desc,
+  // así que el primero que aparece gana.
+  const creditoPorCliente = new Map<string, { id: string; conInteres: boolean }>();
+  for (const c of creditosRes.data ?? []) {
+    const clienteId = c.cliente_id as string;
+    if (!creditoPorCliente.has(clienteId)) {
+      creditoPorCliente.set(clienteId, {
+        id: c.id as string,
+        conInteres: Boolean(c.con_interes),
+      });
+    }
+  }
 
   const deuda = new Map<string, number>();
   for (const c of impagasRes.filas) {
@@ -146,6 +167,8 @@ export async function traerClientes(): Promise<DatosClientes> {
       tipo,
       papeles: resumenDocumentacion(evaluacion, tipo),
       papelesOk: tipo !== null && evaluacion.completa && !evaluacion.hayDesactualizados,
+      creditoId: creditoPorCliente.get(id)?.id ?? null,
+      tieneInteres: creditoPorCliente.get(id)?.conInteres ?? false,
     };
   });
 
