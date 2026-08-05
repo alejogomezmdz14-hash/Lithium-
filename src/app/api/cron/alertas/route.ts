@@ -12,8 +12,13 @@ import {
 /**
  * Cron diario de alertas. Ver CLAUDE.md §4.
  *
- * Corre todos los días a las 9 (hora de Argentina) por Vercel Cron. Hace tres
- * cosas, en este orden:
+ * Lo dispara Vercel Cron con `"schedule": "0 12 * * *"` en `vercel.json`.
+ * **Los crons de Vercel corren en UTC**, así que las 12:00 UTC son las 9:00 de
+ * Argentina. Ese archivo no admite comentarios ni un campo `comment` —el build
+ * falla con "should NOT have additional property"— así que la explicación del
+ * horario vive acá.
+ *
+ * Hace tres cosas, en este orden:
  *
  *   1. `marcar_vencidas()` — pone en 'vencido' lo que se pasó de fecha.
  *   2. Avisa lo que vence **en 2 días**.

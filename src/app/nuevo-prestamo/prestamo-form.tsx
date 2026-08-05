@@ -59,18 +59,13 @@ export function PrestamoForm({
   const [cuotas, setCuotas] = useState(1);
   const [primeraFecha, setPrimeraFecha] = useState(sumarDias(hoy, 30));
   const [frecuencia, setFrecuencia] = useState("mensual");
-  // Cuál de los dos campos vinculados tiene el foco. El que se está editando
-  // NUNCA se reescribe: eso es lo que evita el "eco", donde A escribe en B, B
-  // escribe en A, y el número muta abajo del cursor (§9.14).
-  const [editando, setEditando] = useState<"total" | "porcentaje" | null>(null);
-  const [pctTexto, setPctTexto] = useState("");
-
   const capital = parseARS(capitalTexto) ?? 0;
   const total = parseARS(totalTexto) ?? 0;
   const interes = total > capital ? total - capital : 0;
+  // El % ya no es un campo editable: se muestra como resultado. Con un solo
+  // input no hay "eco" posible — el problema de que A escriba en B y B en A
+  // desaparece porque ya no hay dos campos que se escriban entre sí.
   const porcentaje = capital > 0 && total > 0 ? Math.round((total / capital - 1) * 1000) / 10 : 0;
-  const pctMostrado =
-    editando === "porcentaje" ? pctTexto : porcentaje > 0 ? String(porcentaje) : "";
 
   const aplicarPorcentaje = (p: number) => {
     if (capital <= 0) return;
@@ -203,76 +198,31 @@ export function PrestamoForm({
           ))}
         </div>
 
-        <div className="mt-4 flex items-end gap-3">
-          {/* No son dos campos pares: el total mide el doble y va en mono grande.
-              La jerarquía visual dice cuál es el número real. */}
-          <div className="flex-[2]">
-            <label
-              htmlFor="total"
-              className="text-[0.8125rem] font-medium text-muted-foreground"
-            >
-              Tengo que cobrar
-            </label>
-            <div className="mt-1 flex items-center gap-1 rounded-lg border border-border bg-background px-3">
-              <span className="font-mono text-[1.0625rem] text-muted-foreground">$</span>
-              <input
-                id="total"
-                type="text"
-                inputMode="numeric"
-                value={totalTexto}
-                onFocus={() => setEditando("total")}
-                onBlur={() => setEditando(null)}
-                onChange={(e) => setTotalTexto(e.target.value)}
-                disabled={enviando}
-                placeholder="520.000"
-                className="h-12 w-full bg-transparent font-mono text-[1.0625rem] tabular-nums text-foreground outline-none placeholder:text-muted-subtle"
-              />
-            </div>
-          </div>
-
-          <div className="flex-1">
-            <label
-              htmlFor="porcentaje"
-              className="text-[0.8125rem] font-medium text-muted-foreground"
-            >
-              Interés
-            </label>
-            <div className="mt-1 flex items-center rounded-lg border border-border bg-background px-3">
-              <input
-                id="porcentaje"
-                type="text"
-                inputMode="decimal"
-                // Siempre controlado. Mientras tiene el foco muestra lo que ella
-                // tipea; cuando lo suelta, vuelve a mostrar el % derivado del
-                // total. Nunca se reescribe abajo del cursor.
-                value={pctMostrado}
-                onFocus={() => {
-                  setPctTexto(porcentaje > 0 ? String(porcentaje) : "");
-                  setEditando("porcentaje");
-                }}
-                onChange={(e) => setPctTexto(e.target.value)}
-                onBlur={() => {
-                  setEditando(null);
-                  const p = Number(pctTexto.replace(",", "."));
-                  if (pctTexto.trim() !== "" && Number.isFinite(p) && p >= 0) aplicarPorcentaje(p);
-                }}
-                disabled={enviando}
-                placeholder="30"
-                className="h-12 w-full bg-transparent text-[0.9375rem] tabular-nums text-foreground outline-none placeholder:text-muted-subtle"
-              />
-              <span className="text-[0.9375rem] text-muted-foreground">%</span>
-            </div>
-          </div>
+        {/* UN solo campo, no dos. Antes había también un input de % editable que
+            se recalculaba solo, y eso obligaba a entender cuál manda: el número
+            real es la plata que tiene que devolver, y el % es solo una forma de
+            escribirlo rápido. Los chips ya lo resuelven. */}
+        <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-background px-4">
+          <span className="font-mono text-[1.375rem] text-muted-foreground">$</span>
+          <input
+            id="total"
+            type="text"
+            inputMode="numeric"
+            value={totalTexto}
+            onChange={(e) => setTotalTexto(e.target.value)}
+            disabled={enviando}
+            placeholder="520.000"
+            className="h-14 w-full bg-transparent font-mono text-[1.375rem] tabular-nums text-foreground outline-none placeholder:text-muted-subtle"
+          />
         </div>
 
-        {/* El resultado dicho en castellano: el chequeo de sentido que no depende
-            de entender qué campo es cuál. */}
+        {/* El resultado dicho en castellano: el chequeo de sentido. */}
         <p className="mt-3 text-[0.8125rem] font-medium text-muted-foreground">
           {interes > 0
-            ? `Ganás ${formatARS(interes)} de interés.`
+            ? `Ganás ${formatARS(interes)} de interés${porcentaje > 0 ? ` (${porcentaje}%)` : ""}.`
             : capital > 0 && total > 0
               ? "Sin interés: te devuelve lo mismo que le prestás."
-              : "Escribí los dos montos y te muestro el interés."}
+              : "Tocá un porcentaje o escribí el monto."}
         </p>
       </section>
 
