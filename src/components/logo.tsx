@@ -29,10 +29,13 @@ export function Lockup() {
   return (
     <div className="flex flex-col items-start">
       <Isotipo size={72} />
-      <p className="mt-5 text-[2rem] font-semibold leading-none tracking-[-0.02em] text-foreground">
+      {/* Los tokens son los de Adoquín: adentro de la piedra del login,
+          `--texto` y `--texto-suave` ya vienen redeclarados, así que la bajada
+          sale gris sin condicionar nada por tema. */}
+      <p className="mt-5 text-[2rem] font-semibold leading-none tracking-[-0.02em] text-texto">
         Lithium
       </p>
-      <p className="mt-2 text-[0.8125rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+      <p className="mt-2 text-[0.75rem] font-semibold uppercase tracking-[0.18em] text-texto-suave">
         Credit Company
       </p>
     </div>

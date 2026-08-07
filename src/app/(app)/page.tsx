@@ -1,23 +1,51 @@
 import Link from "next/link";
 
-import { FilaDeAcciones } from "@/components/acciones";
-import { Avatar, ChipSemaforo } from "@/components/semaforo";
+import { Buscador } from "@/components/buscador";
+import { Aviso } from "@/components/aviso";
+import { BotonLink } from "@/components/boton";
+import { ColumnaMonto, Monto } from "@/components/monto";
+import { Rotulo } from "@/components/rotulo";
+import { Semaforo } from "@/components/semaforo";
+import { Fila, FilaLectura, Losa, Piedra } from "@/components/superficie";
 import { nombreDeMes } from "@/lib/fecha";
-import { formatARS } from "@/lib/money";
-import { traerResumen } from "@/lib/queries";
+import { traerClientes, traerResumen } from "@/lib/queries";
 
 export const metadata = { title: "Resumen — Lithium" };
 
 export default async function ResumenPage() {
-  const { hoy, resumen, error } = await traerResumen();
+  // Las dos queries en paralelo: el resumen es la pantalla, la lista de clientes
+  // es lo que alimenta el buscador sticky. Encadenarlas sería sumar dos
+  // round-trips por una dependencia que no existe.
+  const [{ hoy, resumen, error }, { clientes }] = await Promise.all([
+    traerResumen(),
+    traerClientes(),
+  ]);
 
   if (error || !resumen) {
+    // El mensaje crudo de PostgREST NO se muestra: `JWT expired` o
+    // `relation "public.cuotas" does not exist` en el medio de una frase en
+    // castellano no le dicen nada a Candela y la dejan pensando que perdió
+    // plata. El detalle va al log del server, que es el único lugar donde
+    // sirve para arreglarlo.
+    console.error("[resumen] no se pudo traer:", error ?? "la base no contestó");
+
     return (
-      <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-5">
-        <h1 className="text-[1.0625rem] font-semibold text-foreground">Resumen</h1>
-        <p className="mt-6 rounded-xl bg-card p-5 text-[0.8125rem] font-medium text-danger">
-          No se pudo traer el resumen: {error}
-        </p>
+      <main className="mx-auto w-full max-w-[520px] px-4 pb-28 pt-3">
+        <h1 className="sr-only">Resumen</h1>
+        {/* Un aviso sin acción es un callejón sin salida: el único gesto que
+            queda es cerrar la app. `Reintentar` vuelve a pedir la misma
+            pantalla, y ahora esa espera tiene su propio `loading.tsx`. */}
+        <Aviso
+          tono="error"
+          titulo="No se pudo conectar con la base"
+          acciones={
+            <BotonLink peso="texto" href="/">
+              Reintentar
+            </BotonLink>
+          }
+        >
+          Lo que ya cobraste está guardado — esto es solo la pantalla, no tus datos.
+        </Aviso>
       </main>
     );
   }
@@ -25,145 +53,237 @@ export default async function ResumenPage() {
   const { prestadoEsteMes, interesEsteMes, meDeben, vencido, cobroEstaSemana, quienMeDebe } =
     resumen;
 
+  // Los que tienen algo vencido, arriba. Es lo que hace que la barra de peligro
+  // salga de un tirón en vez de entrecortada: tres rieles seguidos dicen "este
+  // bloque es el problema"; tres rieles salteados no dicen nada.
+  // `sort` es estable, así que adentro de cada mitad sobrevive el orden por
+  // deuda descendente que ya trae la query.
+  const deudores = [...quienMeDebe].sort(
+    (a, b) => Number(b.cuotasVencidas > 0) - Number(a.cuotasVencidas > 0),
+  );
+
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-5">
-      {/* El número héroe va suelto sobre el canvas, sin tarjeta: es lo primero
-          que se lee y una caja alrededor solo le resta aire. */}
-      <section className="mt-2">
-        <p className="text-[0.8125rem] font-medium text-muted-foreground">Me deben</p>
-        <p className="mt-1 text-[2.75rem] font-semibold leading-[1.02] tracking-[-0.03em] tabular-nums text-foreground">
-          {formatARS(meDeben)}
-        </p>
-        <p className="mt-1 text-[0.8125rem] font-medium text-muted-foreground">
-          {resumen.personasQueDeben === 1
-            ? "1 persona"
-            : `${resumen.personasQueDeben} personas`}
-          {vencido.monto > 0 ? (
-            <>
-              {" · "}
-              <span className="text-danger">{formatARS(vencido.monto)} vencido</span>
-            </>
-          ) : null}
-        </p>
-      </section>
+    <main className="mx-auto w-full max-w-[520px] px-4 pb-28 pt-3">
+      {/* El título no se dibuja: la piedra ya dice de qué se trata la pantalla
+          con un número de 44px. Pero tiene que existir para quien navega por
+          encabezados. */}
+      <h1 className="sr-only">Resumen</h1>
 
-      <FilaDeAcciones />
+      {/* El buscador envuelve el tab entero: mientras hay algo escrito, los
+          resultados REEMPLAZAN la pantalla (§3.5). Si `traerClientes` falla, la
+          búsqueda queda vacía en vez de romper el resumen, que es lo que ella
+          vino a ver. */}
+      <Buscador personas={clientes}>
+        <Piedra>
+          <p className="text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
+            Me deben
+          </p>
+          <p className="mt-2 font-display text-[2.75rem] font-bold leading-[0.98] tracking-[-0.04em]">
+            <Monto valor={meDeben} />
+          </p>
+          <p className="mt-2 text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
+            {meDeben === 0 ? (
+              "Estás al día."
+            ) : (
+              <>
+                {resumen.personasQueDeben === 1
+                  ? "1 persona"
+                  : `${resumen.personasQueDeben} personas`}
+                {vencido.monto > 0 ? (
+                  <>
+                    {" · "}
+                    {/* La plata nunca lleva color: lo que se pinta es la
+                        PALABRA, no el número (§9.2). */}
+                    <Monto valor={vencido.monto} className="text-texto" />{" "}
+                    <span className="text-peligro">vencido</span>
+                  </>
+                ) : null}
+              </>
+            )}
+          </p>
+        </Piedra>
 
-      {/* Los números del negocio en UNA sola tarjeta, como filas de una lista.
-          Antes eran tres tarjetas apiladas con títulos repetidos: más cajas que
-          datos. */}
-      <section className="mt-7 rounded-xl bg-card p-5">
-        <dl className="flex flex-col gap-3">
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-[0.8125rem] font-medium text-muted-foreground">
-              Tu capital en la calle
-            </dt>
-            <dd className="font-mono text-[0.9375rem] font-medium tabular-nums text-foreground">
-              {formatARS(resumen.capitalEnLaCalle)}
-            </dd>
-          </div>
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-[0.8125rem] font-medium text-muted-foreground">
-              Interés por cobrar
-            </dt>
-            <dd className="font-mono text-[0.9375rem] font-medium tabular-nums text-foreground">
-              {formatARS(resumen.interesPorCobrar)}
-            </dd>
-          </div>
+        {/* Tres acciones, una losa. No pesan igual: `Nueva deuda` se lleva la
+            fila entera y las otras dos comparten la de abajo. Se fueron los
+            cuatro círculos con ícono —el label ya hacía todo el trabajo y el
+            ícono se comía 56px de alto— y se fue `Papeles`, que era un destino
+            disfrazado de acción: lleva a /clientes, que ya es un tab. */}
+        <div className="mt-2.5">
+          <Losa>
+            <Fila>
+              {/* El link cubre la celda entera, padding incluido: el target es
+                  el bloque, no las dos palabras del medio. */}
+              <Link
+                href="/nuevo-prestamo"
+                className="absolute inset-0 flex items-center justify-center text-[1rem] font-semibold tracking-[-0.011em] text-marca-texto"
+              >
+                Nueva deuda
+              </Link>
+            </Fila>
 
-          <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-border pt-3">
-            <dt className="text-[0.8125rem] font-medium text-muted-foreground">
-              Prestaste en {nombreDeMes(hoy)}
-              {prestadoEsteMes.personas > 0 ? (
-                <span className="text-muted-subtle">
-                  {" "}
-                  · {prestadoEsteMes.personas}{" "}
-                  {prestadoEsteMes.personas === 1 ? "persona" : "personas"}
-                </span>
-              ) : null}
-            </dt>
-            <dd className="font-mono text-[0.9375rem] font-medium tabular-nums text-foreground">
-              {formatARS(prestadoEsteMes.total)}
-            </dd>
-          </div>
-          {interesEsteMes > 0 ? (
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-[0.8125rem] font-medium text-muted-foreground">
-                Vas a ganar de interés
-              </dt>
-              <dd className="font-mono text-[0.9375rem] font-medium tabular-nums text-foreground">
-                {formatARS(interesEsteMes)}
-              </dd>
+            <div className="flex gap-[var(--junta)]">
+              {/* NO dice `Ya me pagó`: esa etiqueta es la del botón que abre el
+                  sheet y registra el cobro de una cuota concreta (el buscador,
+                  `Por pagar` y el detalle del préstamo). Acá la celda lleva a la
+                  lista para elegir a quién, y eso es otra cosa. Un término, un
+                  comportamiento — el que registra plata se queda con el nombre. */}
+              <Fila className="flex-1">
+                <Link
+                  href="/por-pagar"
+                  className="absolute inset-0 flex items-center justify-center text-[0.875rem] font-semibold tracking-[-0.006em] text-marca-texto"
+                >
+                  Cobrar a alguien
+                </Link>
+              </Fila>
+              <Fila className="flex-1">
+                <Link
+                  href="/nuevo-cliente"
+                  className="absolute inset-0 flex items-center justify-center text-[0.875rem] font-semibold tracking-[-0.006em] text-marca-texto"
+                >
+                  Cliente nuevo
+                </Link>
+              </Fila>
             </div>
-          ) : null}
-        </dl>
-      </section>
-
-      <Link
-        href="/por-pagar"
-        className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-card px-5 py-4"
-      >
-        <span className="text-[0.8125rem] font-medium text-muted-foreground">
-          Cobrás esta semana
-        </span>
-        <span className="font-mono text-[0.9375rem] font-medium tabular-nums text-foreground">
-          {formatARS(cobroEstaSemana)} ›
-        </span>
-      </Link>
-
-      {/* Las deudas pendientes, abajo. Lista COMPLETA con scroll: cortar en
-          cinco es cortar justo donde empieza a servir (§9.6). */}
-      <section className="mt-7">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Quién me debe
-          </h2>
-          {quienMeDebe.length > 0 ? (
-            <span className="text-[0.8125rem] font-medium tabular-nums text-muted-foreground">
-              {quienMeDebe.length === 1 ? "1 persona" : `${quienMeDebe.length} personas`}
-            </span>
-          ) : null}
+          </Losa>
         </div>
 
-        {quienMeDebe.length === 0 ? (
-          <p className="mt-2 rounded-xl bg-card p-5 text-[0.8125rem] font-medium text-muted-foreground">
-            No te debe nadie.
-          </p>
-        ) : (
-          <ul className="mt-2 flex flex-col gap-2">
-            {quienMeDebe.map((persona) => (
-              <li key={persona.cliente_id}>
-                <Link
-                  href="/clientes"
-                  className="flex items-center gap-3 rounded-xl bg-card px-4 py-3.5"
-                >
-                  <Avatar nombre={persona.nombre} />
+        {/* Quién me debe sube: es lo segundo que se lee, no lo último. Lista
+            COMPLETA — cortar en cinco es cortar justo donde empieza a servir,
+            porque con muchos deudores el que buscás es el noveno (§9.6). */}
+        <section className="mt-8">
+          <div className="flex items-baseline justify-between gap-3">
+            <Rotulo>Quién me debe</Rotulo>
+            {deudores.length > 0 ? (
+              <span className="text-[0.875rem] font-medium text-texto-suave">
+                {deudores.length === 1 ? "1 persona" : `${deudores.length} personas`}
+              </span>
+            ) : null}
+          </div>
 
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[0.9375rem] font-semibold tracking-[-0.006em] text-foreground">
-                      {persona.nombre}
-                    </span>
-                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2">
-                      <ChipSemaforo estado={persona.semaforo} />
-                      {persona.cuotasVencidas > 0 ? (
-                        <span className="text-[0.8125rem] font-medium text-danger">
-                          {persona.cuotasVencidas === 1
-                            ? "1 cuota vencida"
-                            : `${persona.cuotasVencidas} cuotas vencidas`}
-                        </span>
-                      ) : null}
-                    </span>
+          <div className="mt-2.5">
+            {deudores.length === 0 ? (
+              <Losa>
+                <FilaLectura>
+                  <span className="text-[0.875rem] font-medium text-texto-suave">
+                    No te debe nadie.
                   </span>
+                </FilaLectura>
+              </Losa>
+            ) : (
+              <Losa>
+                {deudores.map((persona) => (
+                  <Fila key={persona.cliente_id} peligro={persona.cuotasVencidas > 0}>
+                    <Link href={`/clientes/${persona.cliente_id}`} className="min-w-0 flex-1">
+                      <span className="block truncate text-[1rem] font-semibold tracking-[-0.011em] text-texto">
+                        {persona.nombre}
+                      </span>
+                      <span className="mt-1 flex flex-wrap items-center gap-x-2">
+                        <Semaforo estado={persona.semaforo} />
+                        {persona.cuotasVencidas > 0 ? (
+                          <span className="text-[0.875rem] font-medium text-peligro">
+                            {persona.cuotasVencidas === 1
+                              ? "1 cuota vencida"
+                              : `${persona.cuotasVencidas} cuotas vencidas`}
+                          </span>
+                        ) : null}
+                      </span>
+                    </Link>
 
-                  <span className="shrink-0 font-mono text-[0.875rem] font-medium tabular-nums text-foreground">
-                    {formatARS(persona.monto)}
+                    <ColumnaMonto>
+                      <Monto
+                        valor={persona.monto}
+                        className="font-mono text-[0.95rem] font-medium tracking-[-0.01em] text-texto"
+                      />
+                    </ColumnaMonto>
+                  </Fila>
+                ))}
+              </Losa>
+            )}
+          </div>
+        </section>
+
+        {/* Los números del negocio: una tabla, no cuatro tiles. Si un número no
+            cambia una decisión, no está acá. */}
+        <section className="mt-8">
+          <Losa>
+            <FilaLectura>
+              <span className="text-[0.875rem] font-medium text-texto-suave">
+                Tu capital en la calle
+              </span>
+              <ColumnaMonto>
+                <Monto
+                  valor={resumen.capitalEnLaCalle}
+                  className="font-mono text-[0.95rem] font-normal tracking-[-0.01em] text-texto"
+                />
+              </ColumnaMonto>
+            </FilaLectura>
+
+            <FilaLectura>
+              <span className="text-[0.875rem] font-medium text-texto-suave">
+                Interés por cobrar
+              </span>
+              <ColumnaMonto>
+                <Monto
+                  valor={resumen.interesPorCobrar}
+                  className="font-mono text-[0.95rem] font-normal tracking-[-0.01em] text-texto"
+                />
+              </ColumnaMonto>
+            </FilaLectura>
+
+            <FilaLectura>
+              <span className="min-w-0 text-[0.875rem] font-medium text-texto-suave">
+                Prestaste en {nombreDeMes(hoy)}
+                {prestadoEsteMes.personas > 0 ? (
+                  <span className="text-texto-tenue">
+                    {" · "}
+                    {prestadoEsteMes.personas}{" "}
+                    {prestadoEsteMes.personas === 1 ? "persona" : "personas"}
                   </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                ) : null}
+              </span>
+              <ColumnaMonto>
+                <Monto
+                  valor={prestadoEsteMes.total}
+                  className="font-mono text-[0.95rem] font-normal tracking-[-0.01em] text-texto"
+                />
+              </ColumnaMonto>
+            </FilaLectura>
+
+            {interesEsteMes > 0 ? (
+              <FilaLectura>
+                <span className="text-[0.875rem] font-medium text-texto-suave">
+                  Vas a ganar de interés
+                </span>
+                <ColumnaMonto>
+                  <Monto
+                    valor={interesEsteMes}
+                    className="font-mono text-[0.95rem] font-normal tracking-[-0.01em] text-texto"
+                  />
+                </ColumnaMonto>
+              </FilaLectura>
+            ) : null}
+
+            {/* La última es la única que lleva a algún lado, y lleva justo a la
+                pantalla donde se cobra. */}
+            <FilaLectura className="relative">
+              <Link
+                href="/por-pagar"
+                className="absolute inset-0 flex items-center justify-between gap-3 px-4"
+              >
+                <span className="text-[0.875rem] font-semibold tracking-[-0.006em] text-marca-texto">
+                  Cobrás esta semana
+                </span>
+                <ColumnaMonto>
+                  <Monto
+                    valor={cobroEstaSemana}
+                    className="font-mono text-[0.95rem] font-normal tracking-[-0.01em] text-texto"
+                  />
+                </ColumnaMonto>
+              </Link>
+            </FilaLectura>
+          </Losa>
+        </section>
+      </Buscador>
     </main>
   );
 }

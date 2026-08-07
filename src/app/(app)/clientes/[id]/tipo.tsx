@@ -3,15 +3,24 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { Boton } from "@/components/boton";
+import { Campo, INPUT, Segmentado } from "@/components/campo";
 import { NOMBRE_TIPO_CLIENTE, REQUISITOS, type TipoCliente } from "@/lib/documentacion";
 
 import { cambiarTipo } from "@/app/acciones-documentos";
 
-const TIPOS = Object.keys(NOMBRE_TIPO_CLIENTE) as TipoCliente[];
+const TIPOS = (Object.keys(NOMBRE_TIPO_CLIENTE) as TipoCliente[]).map((t) => ({
+  valor: t,
+  label: NOMBRE_TIPO_CLIENTE[t],
+}));
 
-const campo =
-  "h-12 w-full rounded-lg border border-border bg-background px-4 text-base text-foreground placeholder:text-muted-subtle";
-
+/**
+ * De qué tipo es la persona: es lo que determina qué papeles hay que pedirle.
+ *
+ * El tipo se guarda al tocarlo — no hay un "Guardar" aparte para una elección de
+ * una sola opción. La celda elegida es el ESCALÓN: el mismo material que en una
+ * lista dice "actuá acá" acá dice "esto es lo elegido". Un concepto, seis usos.
+ */
 export function SelectorDeTipo({
   clienteId,
   actual,
@@ -32,6 +41,9 @@ export function SelectorDeTipo({
   const [guardando, empezar] = useTransition();
 
   function guardar(tipo: TipoCliente | null) {
+    // El botón nunca se deshabilita —el azul apagado es ilegible al sol—, así
+    // que el segundo toque se ignora acá.
+    if (guardando) return;
     setElegido(tipo);
     setError(null);
     empezar(async () => {
@@ -47,71 +59,47 @@ export function SelectorDeTipo({
 
   if (!abierto) {
     return (
-      <button
-        type="button"
-        onClick={() => setAbierto(true)}
-        className="mt-2 h-12 text-[0.8125rem] font-semibold text-primary-text"
-      >
+      <Boton peso="texto" onClick={() => setAbierto(true)} className="mt-1">
         Cambiar el tipo de cliente
-      </button>
+      </Boton>
     );
   }
 
   return (
-    <div className="mt-2 rounded-xl bg-card p-5">
-      <p className="text-[0.9375rem] font-semibold text-foreground">Tipo de cliente</p>
-      <p className="mt-1 text-[0.8125rem] font-medium text-muted-foreground">
-        Determina qué documentación hay que pedirle.
-      </p>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        {TIPOS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => guardar(t)}
-            disabled={guardando}
-            className={`h-12 rounded-full px-4 text-[0.8125rem] font-semibold disabled:opacity-60 ${
-              elegido === t
-                ? "bg-primary text-primary-foreground"
-                : "bg-surface-raised text-muted-foreground"
-            }`}
-          >
-            {NOMBRE_TIPO_CLIENTE[t]}
-          </button>
-        ))}
-      </div>
+    <div className="mt-2.5 flex flex-col gap-2.5">
+      <Campo label="Tipo de cliente" ayuda="Determina qué documentación hay que pedirle.">
+        <Segmentado
+          etiqueta="Tipo de cliente"
+          columnas={2}
+          opciones={TIPOS}
+          valor={elegido}
+          onChange={guardar}
+        />
+      </Campo>
 
       {elegido ? (
-        <div className="mt-3 rounded-lg bg-surface-raised p-4">
-          <p className="text-[0.8125rem] font-medium text-muted-foreground">
-            Documentación a presentar:
-          </p>
-          <ul className="mt-2 flex flex-col gap-1">
-            {REQUISITOS[elegido].map((r) => (
-              <li key={r.tipo} className="text-[0.8125rem] font-medium text-foreground">
-                · {r.label}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <p className="text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
+          Hay que pedirle: {REQUISITOS[elegido].map((r) => r.label.toLowerCase()).join(" · ")}.
+        </p>
       ) : null}
 
-      {/* El garante se pide en PAMI, y nunca es obligatorio. */}
+      {/* El garante se pide en PAMI, y nunca es obligatorio: exigirlo frenaría el
+          alta de alguien parada en la puerta de la casa. */}
       {elegido === "pami" ? (
-        <div className="mt-3">
-          <p className="text-[0.9375rem] font-semibold text-foreground">Garante</p>
-          <p className="mt-1 text-[0.8125rem] font-medium text-muted-foreground">
-            Opcional. Si alguna vez hay que reclamarle, vas a necesitar el teléfono.
-          </p>
-          <input
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            autoCapitalize="words"
-            disabled={guardando}
-            placeholder="Nombre del garante"
-            className={`${campo} mt-2`}
-          />
+        <div className="mt-2.5 flex flex-col gap-2.5">
+          <Campo
+            label="Garante"
+            ayuda="Opcional. Si alguna vez hay que reclamarle, vas a necesitar el teléfono."
+          >
+            <input
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              autoCapitalize="words"
+              disabled={guardando}
+              placeholder="Nombre y apellido"
+              className={INPUT}
+            />
+          </Campo>
           <input
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
@@ -119,36 +107,28 @@ export function SelectorDeTipo({
             inputMode="tel"
             disabled={guardando}
             placeholder="Su teléfono"
-            className={`${campo} mt-2`}
+            aria-label="Teléfono del garante"
+            className={INPUT}
           />
-          <button
-            type="button"
-            onClick={() => guardar("pami")}
-            disabled={guardando}
-            className="mt-3 h-12 w-full rounded-full bg-primary text-[0.8125rem] font-semibold text-primary-foreground disabled:opacity-60"
-          >
+          <Boton peso="texto" onClick={() => guardar("pami")}>
             {guardando ? "Guardando…" : "Guardar el garante"}
-          </button>
+          </Boton>
         </div>
       ) : null}
 
       <p
         role="alert"
-        aria-live="polite"
-        className={`mt-2 text-[0.8125rem] font-medium text-danger ${error ? "" : "sr-only"}`}
+        className={`text-[0.875rem] font-medium tracking-[-0.006em] text-peligro ${
+          error ? "" : "sr-only"
+        }`}
       >
         {error ?? ""}
       </p>
 
       {actual !== null ? (
-        <button
-          type="button"
-          onClick={() => setAbierto(false)}
-          disabled={guardando}
-          className="mt-1 h-12 text-[0.8125rem] font-medium text-muted-foreground"
-        >
-          Cancelar
-        </button>
+        <Boton peso="texto" onClick={() => (guardando ? undefined : setAbierto(false))}>
+          Dejarlo como estaba
+        </Boton>
       ) : null}
     </div>
   );

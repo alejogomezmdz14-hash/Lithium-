@@ -1,11 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, Instrument_Sans } from "next/font/google";
+import { Archivo, Bricolage_Grotesque, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-// Instrument Sans: set latino completo y ascendentes con aire para las tildes
-// (vencía, Suárez, próximo). Descartados Inter (default) y Geist (lee a plantilla).
-const instrumentSans = Instrument_Sans({
-  variable: "--font-instrument-sans",
+// **Bricolage Grotesque** para los titulares y los números grandes. Es variable
+// —se le puede apretar el ancho— y tiene rarezas de dibujo que se ven a 44px y
+// desaparecen a 14: exactamente donde hace falta carácter y donde no. Es lo que
+// hace que la pantalla no se lea como una plantilla.
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin", "latin-ext"],
+  display: "swap",
+});
+
+// **Archivo** para toda la interfaz. Grotesca de verticales duras, dibujada para
+// texto chico y con tildes y eñes bien resueltas — que en castellano no es un
+// detalle. Descartadas Inter (el uniforme de todo dashboard generado) e IBM Plex
+// Sans (la default de "app de banco", que es justo lo que no queremos parecer).
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin", "latin-ext"],
   display: "swap",
 });
@@ -25,12 +37,18 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // Son los dos `--base-alta`, el color de ARRIBA del degradé de fondo — que es
+  // el que toca la barra de estado. Si no coinciden, el teléfono arranca con una
+  // franja de un color que no es de ninguna pantalla.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4f4f6" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0c" },
+    { media: "(prefers-color-scheme: light)", color: "#E7EAF0" },
+    { media: "(prefers-color-scheme: dark)", color: "#0D1017" },
   ],
-  // Se cobra parada en la calle: que un doble tap no haga zoom sobre el botón.
-  maximumScale: 1,
+  // Sin `maximumScale: 1`. Ese atajo evitaba que el doble tap hiciera zoom sobre
+  // un botón, pero de paso le sacaba el pinch-zoom a todo el mundo — incluida
+  // quien necesita agrandar para leer (WCAG 1.4.4). Lo que apaga el doble tap y
+  // nada más es `touch-action: manipulation`, que va sobre los controles en
+  // `globals.css`.
 };
 
 /**
@@ -58,12 +76,16 @@ export default function RootLayout({
       // antes de que React hidrate, así que el server y el cliente difieren a
       // propósito en ese atributo.
       suppressHydrationWarning
-      className={`h-full ${instrumentSans.variable} ${ibmPlexMono.variable}`}
+      className={`h-full ${archivo.variable} ${bricolage.variable} ${ibmPlexMono.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: TEMA_INICIAL }} />
       </head>
-      <body className="min-h-full antialiased">{children}</body>
+      {/* Sin `antialiased`: el suavizado va por `-webkit-font-smoothing:
+          var(--suavizado)` en `globals.css`, que es el mecanismo por el que el
+          ajuste óptico depende del tema sin que exista una sola regla de CSS
+          condicionada por tema. Una clase acá lo pisaría en los dos. */}
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

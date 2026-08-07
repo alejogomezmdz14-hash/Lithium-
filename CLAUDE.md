@@ -127,7 +127,7 @@ El cron opera sobre **cuotas**, no sobre créditos. Llama primero a `marcar_venc
 | Deploy | **Vercel** | CLI 54.4.1 instalado y **logueado** (`alejogomezmdz14-hash`) |
 | Base de datos | **Supabase** — `tfmywihnocwsszaawpbb` | proyecto creado · migración escrita, **sin aplicar** |
 | Auth | **Supabase Auth** — una sola usuaria (Candela, admin) | pendiente |
-| Framework | **Next.js 16.2** App Router + React 19.2 + Tailwind 4.3 + shadcn | scaffold hecho |
+| Framework | **Next.js 16.2** App Router + React 19.2 + Tailwind 4.3 | interfaz **Adoquín**, §9.1 |
 | Cron de alertas | **n8n** | MCP conectado |
 | WhatsApp | **Evolution API** (número de Candela, ya conectado) | — |
 
@@ -159,11 +159,21 @@ Gestor de paquetes: **pnpm** (hay `pnpm-workspace.yaml`, no usar npm).
 
 **Migraciones:** las corre `scripts/migrate.mjs` contra `SUPABASE_DB_URL` (de `.env.local`). Cada archivo va **dentro de una transacción** — si falla, no queda la base a medio migrar — y se registra en la tabla `_migraciones` para no reaplicarlo. Usar la conexión **directa o el session pooler**; el transaction pooler (puerto 6543) no maneja bien este DDL.
 
-**Qué está testeado y por qué:** `src/lib/money.ts` y `src/lib/fecha.ts` son las dos únicas piezas donde un bug cuesta plata de verdad. Los dos casos que no se pueden romper nunca:
+**Qué está testeado y por qué.** 265 tests. `src/lib/money.ts` y `src/lib/fecha.ts` son las dos piezas donde un bug cuesta plata de verdad; los tres casos que no se pueden romper nunca:
 
 - `parseARS("86.666") === 86666` — ochenta y seis mil, no 86 con 666.
 - `hoyEnBA()` devuelve `2026-07-30` cuando en UTC ya es `2026-07-31` (23:00 de Argentina).
-- Y el invariante de `repartirMonto()`: la suma de las cuotas es **exactamente** el total, barrido sobre cientos de combinaciones.
+- El invariante de `repartirMonto()`: la suma de las cuotas es **exactamente** el total, barrido sobre cientos de combinaciones.
+
+**Y tres tests que son guardas del diseño, no de la lógica** (§9.1). Un sistema de diseño no se muere en el lanzamiento: se muere cuando alguien agrega una pantalla seis meses después y escribe de memoria lo que ya no corresponde.
+
+| Archivo | Falla si… |
+|---|---|
+| `src/lib/tema.test.ts` | dos materiales de un tema quedan a menos de 3.0 de ΔL* (el bug que hacía invisible el escalón en claro), o aparece **cualquier regla de estilo colgando de `:root`** (el bug que se filtraba a los dos temas) |
+| `src/lib/acento.test.ts` | hay dos `peso="lleno"` en un archivo, se escribe un material fuera de `superficie.tsx`, o queda una clase del sistema viejo (`bg-card`, `rounded-xl`, `disabled:opacity`…) |
+| `src/lib/gramatica.test.ts` | `lineaMeta()` devuelve más de **3 segmentos** — tres se leen de un vistazo, cuatro es una oración |
+
+Las clases del sistema viejo **no fallan el build: se renderizan como nada.** Por eso `acento.test.ts` las busca por nombre.
 
 > **Next.js 16 no es el Next.js que conocés.** Hay breaking changes respecto de los datos de entrenamiento. **La doc completa está en `node_modules/next/dist/docs/`** — leerla ahí antes de escribir código, es la fuente de verdad de la versión exacta instalada y le gana a cualquier recuerdo.
 
@@ -191,10 +201,12 @@ Gestor de paquetes: **pnpm** (hay `pnpm-workspace.yaml`, no usar npm).
 ## 8. Primeros pasos
 1. ~~Schema~~ **APLICADO y verificado** contra la base real (`tfmywihnocwsszaawpbb`). `pnpm db:verify` corre 40 chequeos funcionales — semáforo, trigger, cobro parcial, constraints, idempotencia de alertas y RLS — creando datos de prueba y borrándolos al final. **Correrlo después de tocar la migración.** Falta el Auth (Candela admin).
 2. ~~Scaffold Next.js~~ **hecho** (Next 16.2 + React 19.2 + Tailwind 4.3, `src/`, App Router, alias `@/*`).
-3. ABM de clientes y préstamos + registro de pagos. **Los pagos van siempre por `registrar_pago()`** — nunca un `UPDATE` a `cuotas` desde la app.
+3. ~~ABM de clientes y préstamos + registro de pagos~~ **hecho.** **Los pagos van siempre por `registrar_pago()`** — nunca un `UPDATE` a `cuotas` desde la app.
 4. ~~Cálculo del semáforo (auto)~~ **hecho en SQL** (`recalcular_semaforo` + `trg_sync_desde_cuotas`). Falta el override manual en la UI.
-5. Vista "por pagar" + dashboard.
-6. Cron de alertas (n8n) → Evolution API. El cron llama `marcar_vencidas()` primero. Probar con un crédito de prueba.
+5. ~~Vista "por pagar" + dashboard~~ **hecho.**
+6. ~~Interfaz~~ **rehecha entera el 2026-08-07 con el sistema Adoquín** (§9.1, spec en [`docs/adoquin.md`](docs/adoquin.md)): dos temas que funcionan de verdad, las diez pantallas sobre los mismos primitivos, el buscador de §9.11 construido, y los estados de error en castellano. 265 tests.
+7. Cron de alertas (n8n) → Evolution API. El cron llama `marcar_vencidas()` primero. Probar con un crédito de prueba. **Pendiente: `CANDELA_WHATSAPP` está vacío en `.env.local` y nunca se corrió.**
+8. **Pendiente del audit:** el aviso de papeles vencidos justo antes de prestar (la lógica está en `documentacion.ts`, falta mostrarla), y el `Content-Type` de `/api/documentos/[id]` con allowlist en vez de leerlo de la columna.
 
 ## 9. Diseño y branding
 
@@ -226,7 +238,7 @@ Tests concretos, no aspiraciones:
 
 **Pantallas de tarea única** (fuera del shell, sin barra de navegación): `/login` · `/cobrar/[id]` · `/nuevo-cliente` · `/nuevo-prestamo`.
 
-**La fila de círculos de acción va en el Resumen** (§9.4), y no pesan igual: `Nueva deuda` ocupa el ancho completo y va sola arriba; abajo, en 2 columnas, `Ya me pagó` y `Cliente nuevo`. Son **acciones, nunca destinos** — para navegar están los tabs.
+**Las acciones van en el Resumen, en una losa soldada de tres celdas** (§9.4), y no pesan igual: `Nueva deuda` ocupa el ancho completo y va sola arriba; abajo, en 2 columnas, `Ya me pagó` y `Cliente nuevo`. Son **acciones, nunca destinos** — para navegar están los tabs. **Descartados los cuatro círculos con íconos** que había antes: cada uno necesitaba igual su label abajo, o sea que el label ya hacía todo el trabajo y el ícono se comía 56px de alto.
 
 **Clientes va en SECCIONES por semáforo**, peor primero, cada una con su cuenta y una bajada que explica el grupo (`Mal pagador · 3 — Te deben plata vencida`). Agrupar en vez de listar plano es lo que hace que la pregunta se conteste de un barrido: el header ya da la respuesta y la fila solo dice quién. **Dentro de la sección el chip va solo como punto**, sin repetir la palabra que ya está en el header — salvo que el color lo haya puesto ella a mano, que sí es información nueva.
 
@@ -234,7 +246,7 @@ Tests concretos, no aspiraciones:
 
 `/login` y `/cobrar/[id]` viven **afuera** del shell: son pantallas de tarea única y la navegación ahí solo distrae mientras se registra plata.
 
-Los círculos de acción **solo contienen acciones, nunca destinos**, y no pesan igual: `Ya me pagó` ocupa el doble de ancho y va solo en su fila; abajo, más chicos, `Nuevo préstamo` y `Nuevo cliente`. "Por pagar" no es una acción — es la pantalla donde ya estás. `Ya me pagó` desde el home no abre una cadena de dropdowns: abre la lista buscable de cuotas impagas, con la misma fila y la misma acción que "Por pagar". Un componente, un camino de código. Nunca hay una tercera capa de navegación.
+`Ya me pagó` desde el home no abre una cadena de dropdowns: lleva a la misma lista de cuotas impagas, con la misma fila y la misma acción que "Por pagar". Un componente, un camino de código. **Nunca hay una tercera capa de navegación.**
 
 ### 9.0.1 Vocabulario cerrado (se decide ANTES que los colores)
 
@@ -287,39 +299,54 @@ El logo es **isotipo (un átomo) + wordmark "LITHIUM" + bajada "CREDIT COMPANY"*
 
 **El asset que hay hoy no sirve para producción:** render de presentación en raster, con glow horneado y fondo gris texturizado, sin transparencia. Hace falta, en `public/`: `logo-isotipo.svg` (el átomo solo, transparente, sin glow) · `logo-lockup.svg` · `icon.png` 512×512 · `favicon.ico`. Si no aparece el SVG original, se rehace el isotipo a mano: son tres elipses y cuatro círculos.
 
-### 9.1 Tokens
+### 9.1 Tokens — sistema **Vidrio** (aplicado el 2026-08-07, aprobado por el cliente)
 
-Tailwind v4 + shadcn (`new-york`, `--base radix`, dark permanente: `<html className="dark">`). Todo en `@theme inline` de `globals.css`. Nunca hex sueltos en componentes — siempre tokens.
+> **Historia, para no repetirla:** hubo dos sistemas antes. El original era plano y el cliente lo rechazó por genérico. El segundo (*Adoquín*, spec en [`docs/adoquin.md`](docs/adoquin.md)) prohibía profundidad, gradientes y sombras para no parecer "hecho con IA" — y el cliente lo rechazó **también**, por lo mismo. La lección: **austero no es lo mismo que profesional**. `docs/adoquin.md` se conserva por sus cálculos de contraste y su análisis de pantalla por pantalla, que siguen valiendo; su paleta y su prohibición de profundidad, no.
 
-| Token | Valor | Uso |
-|---|---|---|
-| `background` | `#0A0A0C` | canvas. **Tintado, no gris neutro** — el ramp perfectamente neutro es firma de theme generado |
-| `card` | `#1C1C20` | nivel 1: filas, tiles |
-| `surface-raised` | `#26262B` | nivel 2: hover, la fila levantada, el sheet |
-| `border` | `#2E2E35` | 1px. **Solo contenedores que agrupan y sheets** — nunca alrededor de una fila |
-| `foreground` | `#FAFAFA` | texto principal, **todos los montos** y **todas las fechas** (19:1) |
-| `muted-foreground` | `#A3A3A3` | metadata legible: labels, estados (7.8:1) |
-| `muted-subtle` | `#6E6E6E` | adorno real: separadores `·`, placeholders |
-| `primary` | `#1D63D2` | azul de marca: **rellenos** de botón, texto blanco encima (5.3:1) |
-| `primary-text` | `#35C4D4` | cian de marca: links, texto chico, tab activo, glyphs (**9.4:1**) |
-| `primary-tint` | `#0F2440` | fondo de círculos de acción (cian encima da 7.4:1) |
-| `ring` | `#35C4D4` | focus visible, 2px con `outline-offset: 2px` |
-| `danger` | `#FCA5A5` | **el único rojo de urgencia** (10.4:1). Barra de 3px, línea de atraso |
-| `destructive` | `#F87171` | borrar. Distinto de `danger` a propósito |
-| `warning` | `#F59E0B` | `Ojo` y "pagó tarde". Un solo naranja |
-| `success` | `#34D399` | `Confiable` y el ✓ de cuota cobrada. **Nunca en un monto** |
-| `disabled-foreground` | `#5A5A5A` | controles apagados |
-| `scrim` | `rgba(0,0,0,.6)` | detrás del sheet |
+**El POV:** una sola superficie de vidrio con canto de luz, sobre un fondo que respira. **Lo único que se despega es lo que hay que tocar ahora**, y lo único que brilla es lo que registra plata.
 
-`card` es `#1C1C20` y no `#171717` a propósito: Candela cobra **en la calle, con sol**. Con cards separadas solo por gaps, cero sombra y sin divisores, un delta de 4% de luminancia no distingue dónde termina una fila y empieza la otra — y está por tocar un botón que registra plata. Probar afuera con el brillo al máximo, no en un monitor.
+Tailwind v4, `@theme inline`. **Dos temas**, elegidos con `.dark` en `<html>` y aplicados por un script bloqueante antes de pintar.
 
-**Radius = clase de objeto, nunca uniforme** (el radius único es el tell #1 de UI generada): card/sheet `rounded-xl` (21px — pisar `--radius-xl` a mano, la cadena de `calc` de shadcn da 18px) · input `rounded-lg` (14px) · botón/chip/pill/punto `rounded-full` · skeleton `rounded-sm`. **Radio interior = radio exterior − padding.**
+**Cuatro materiales.** El peso de un bloque es su **distancia de luminancia** al canvas (ΔL* de CIELAB): funciona en los dos temas porque la distancia es absoluta — en oscuro los bloques suben, en claro también, y el blanco puro es el techo, así que se lo lleva el nivel elevado y no el normal.
 
-**Tipografía.** UI: **Instrument Sans** (`next/font`) — set latino completo, ascendentes con aire para las tildes, y no lee a plantilla. Mono: **IBM Plex Mono** — tabulares reales, diacríticos bien dibujados y **cero sin barrar** (el cero barrado en una columna de plata lee "terminal", no "dinero"). Descartado Geist Mono: se rechazó Geist Sans *porque lee a plantilla Vercel* y su mono es la misma firma.
+| Material | Claro | Oscuro | Qué es |
+|---|---|---|---|
+| `base-alta` / `base-baja` | `#E7EAF0` → `#DADEE7` | `#0D1017` → `#06070B` | el canvas, en degradé. **Nunca `#000`**: hace smear en OLED |
+| `vidrio` | `#F4F6F9` | `rgb(255 255 255 / .045)` | toda tarjeta, fila y campo |
+| `vidrio-alto` | `#FFFFFF` | `rgb(255 255 255 / .075)` | la fila accionable. **Una por pantalla** |
+| `panel-heroe` | degradé oscuro | degradé oscuro | el bloque héroe. **Uno por pantalla**, con su paleta propia |
 
-- **El cuerpo va en 500, nunca 400** — en dark el 400 adelgaza ópticamente y se ve barato. El único 400 es el mono.
-- **El mono NO va en todos los montos.** Va donde hay columnas comparables (filas de "Por pagar", plan de cuotas). El número héroe del Resumen en mono lee como un log de build: ese va en sans con `tabular-nums` y tracking cerrado. **El mono se especifica a 0.95em del sans vecino** — a igual `font-size` pesa más ancho y desbalancea la fila.
-- `font-variant-numeric: tabular-nums` en **toda** cifra, incluidas fechas (`12/8`) y contadores (`3/6`). Sin esto los números bailan entre renders y la lista se ve temblorosa: es el tell más barato de arreglar y el más visible.
+**Tres cosas hacen el material, y las tres importan:** el fondo, un **filo de luz de 1px arriba** (`--hairline-luz`) y un hairline alrededor. El filo es la mitad del efecto — es lo que convierte un rectángulo con fondo en un objeto con canto. Todo eso vive en las clases `.vidrio` / `.vidrio-alto` de `globals.css`, y **solo `superficie.tsx` puede escribirlas**.
+
+**La luz ambiente** son dos manchas de opacidad muy baja fijas detrás del contenido (`body::before`). Es lo que saca al fondo de "rectángulo de color plano" sin llamar la atención.
+
+**El glow** (`.con-glow`) va **solo** detrás del relleno de marca, que aparece una vez por pantalla. No es decoración: es lo que hace que el botón que registra plata se encuentre de reojo, con sol.
+
+Texto: `texto` / `texto-suave` / `texto-tenue`. Marca: `marca` (relleno), `marca-texto` (links). Señales: `peligro`, `destructivo`, `atencion`, `exito`.
+
+**Tipografía: Bricolage Grotesque + Archivo + IBM Plex Mono.** `font-display` (Bricolage, variable) va **solo** en el número héroe y los títulos de bloque — tiene rarezas de dibujo que se ven a 44px y desaparecen a 14, que es exactamente donde hace falta carácter y donde no. Todo lo demás en Archivo, que tiene las tildes y las eñes bien resueltas. **Descartadas por nombre: Inter** (el uniforme de todo dashboard generado) e **IBM Plex Sans** (la default de "app de banco", que es justo lo que no queremos parecer).
+
+**Dos reglas duras, y las dos las verifica `src/lib/tema.test.ts`:**
+
+1. **`:root` solo declara custom properties. Nunca una regla de estilo.** Toda diferencia entre temas es un **valor de variable**, jamás un selector. Había dos violaciones y las dos eran bugs: `:root .bg-card { border }` y `:root body { font-weight: 450 }` se aplicaban en **los dos** temas, porque `:root` siempre matchea `<html>`, y el comentario de al lado decía lo contrario. Cero excepciones = cero superficie donde el bug vuelva.
+2. **La escalera de superficies existe de verdad: ≥2.2 de ΔL* entre `base-baja → vidrio → vidrio-alto`, medido sobre el color COMPUESTO** (en oscuro las superficies son capas translúcidas; comparar los tokens crudos daría un falso OK).
+
+> **Este segundo test existe porque el bug pasó DOS veces.** Primero `--fondo` y `--elevado` fueron los dos `#f4f4f6`. Después `--vidrio` y `--vidrio-alto` fueron los dos `#ffffff`. Las dos veces el mecanismo central del sistema quedó invisible **en tema claro**, las dos veces el código seguía documentando que funcionaba, y las dos veces nada en el repo lo gritó. Si tocás un color de superficie, corré `pnpm vitest run src/lib/tema.test.ts`.
+
+**Cero bordes sólidos.** Lo que separa es el escalón de material, el hairline del vidrio y la junta de 2px por donde asoma el canvas.
+
+**El radio es un RANGO, y el default es 0.** Cualquier radio hay que pedirlo por nombre, así un `rounded-*` accidental se ve mal a la primera. `rounded-sm|md|lg|xl|2xl|3xl` **ya no compilan**: `rounded-panel` (24px, el héroe y los sheets) · `rounded-tarjeta` (18px, grupos y tarjetas) · `rounded-campo` (14px) · `rounded-tira` (4px) · `rounded-pill` (**solo los botones que registran plata**, y la barra flotante de navegación). `rounded-losa` y `rounded-piedra` sobreviven como alias de los dos primeros.
+
+**Geometría compartida entre rutas** (`--ancho-monto: 108px`, `--riel: 20px`, `--junta: 2px`, `--alto-buscador: 86px`). El borde derecho de **todo** monto cae en la misma x en Resumen, Por pagar, Clientes y Detalle: parada, con una mano, el pulgar aprende una sola coordenada.
+
+**Movimiento.** `.presionable` en todo lo que se toca: `scale(0.975)` que entra en 90ms y sale en 220 — apretar es instantáneo, soltar se relaja. Curvas en `--ease-salida` (expo.out), `--ease-press` y `--ease-entrada`; **nunca un ms ni una curva sueltos en un componente**. `prefers-reduced-motion` lo aplana todo salvo los `[data-motion="fade"]`, que quedan en 100ms porque un corte seco de opacidad se lee como parpadeo.
+
+**Blur solo en `.barra-vidrio`** (buscador sticky, headers de grupo, barra inferior), que es el único lugar con contenido real moviéndose detrás. Con fallback opaco vía `@supports`: una barra translúcida sin blur deja el texto ilegible sobre la lista que pasa por atrás.
+
+- **Cinco tamaños, no nueve.** Se borraron el 13px y el 15px de toda la app: una escala sin huecos no tiene ritmo, y eso es firma de lo generado. El nombre de fila y la segunda línea **subieron** (sol, brazo estirado); la fila creció de 76 a 80px y está bien que crezca.
+- **El cuerpo va en 500 en LOS DOS temas.** El ajuste óptico se hace donde nace —`-webkit-font-smoothing: var(--suavizado)`— y no adelgazando la fuente. Va por variable, no por selector.
+- **El mono solo donde hay columnas comparables:** montos de fila, plan de cuotas, preview, inputs de plata. El héroe va en **sans** — a 44px el mono lee como un log de build. El mono se especifica a `0.95rem` contra un sans vecino de `1rem`.
+- **`tabular-nums` está en `body`.** No se pone clase por clase y no hay que acordarse.
 
 **Plata.** Una sola función `formatARS()` en `lib/`, nunca `toLocaleString` suelto en un componente (mismo espíritu que "nunca hex sueltos"):
 
@@ -334,22 +361,30 @@ Tailwind v4 + shadcn (`new-york`, `--base radix`, dark permanente: `<html classN
 
 | Concepto | Tratamiento | Por qué |
 |---|---|---|
-| **Plata** | `foreground`, mono, tabular. **Nunca verde, nunca roja.** | En Lithium *todo* es plata. Si la plata tiene color, el color no significa nada. |
-| **Vencido** | **Barra izquierda de 3px en `danger`** + la línea de estado (`12 días de atraso`) en `danger`. El monto queda en `foreground`, sin excepción. | Ver abajo. |
-| **Cobrado** | Fila al **60% de opacidad** + `✓` en `success` en el riel izquierdo + `cobrada el 12/7`. | El verde va en un checkmark, no en un monto: "la plata nunca verde" sobrevive intacta. |
+| **Plata** | `texto`, mono, tabular. **Nunca verde, nunca roja.** | En Lithium *todo* es plata. Si la plata tiene color, el color no significa nada. |
+| **Vencido** | **Barra izquierda de 3px en `peligro`** + la línea de estado (`12 días de atraso`) en `peligro`. El monto queda en `texto`, sin excepción. | Ver abajo. |
+| **Cobrado** | Fila al **55% de opacidad** + `✓` en `exito` en el riel izquierdo + `cobrada el 12/7`. | El verde va en un checkmark, no en un monto: "la plata nunca verde" sobrevive intacta. |
 | **Semáforo** | Punto de 8px + **palabra**, pegado al nombre. | Es la pregunta central: ¿le presto de nuevo? |
-| **Azul / cian de marca** | Solo interacción: `primary` en rellenos de botón, `primary-text` en tab activo, links, focus ring y glyphs. **Nunca decorativo.** | Un solo acento manda, y es el de la marca. |
+| **Azul de marca** | Solo interacción. **Un relleno `marca` por pantalla**, y lo verifica `src/lib/acento.test.ts`. **Nunca decorativo.** | Un solo acento manda, y es el de la marca. |
 
-**Por qué el monto vencido NO va en rojo:** `#F87171` sobre el canvas da **7.2:1**; `#FAFAFA` da **19:1**. El número que ella tiene que ver primero se renderizaría **2.6× más apagado** que uno que no le importa. Y rompe la columna: los montos mono alineados a la derecha funcionan porque se comparan de un barrido, y alternar 19:1 con 7:1 los convierte en manchas. **La barra de 3px es forma, no hue** — se ve al sol y se ve con daltonismo.
+**El presupuesto de acento es un número, no una intención.** `<Boton peso="lleno">` puede aparecer **una sola vez por archivo** y el test falla el build si aparece dos. Toda otra acción del mismo tipo va `peso="fantasma"`: misma forma, mismo tamaño, mismas palabras, solo cambia el peso. Con eso sigue habiendo **un solo relleno por pantalla** y sigue habiendo **cobro de un tap en toda fila** — que es lo que el código ya defendía por escrito en el detalle del préstamo (*"te pagan la 2 antes que la 1 todo el tiempo"*).
+
+**Por qué el lleno es una BARRA de ancho completo y no una píldora lateral.** Se midió: `#1D63D2` contra el escalón oscuro da **2.27:1** y falla el 3:1 de borde no-textual; no existe un azul que dé blanco ≥4.5:1 *y* borde ≥3:1 contra ese escalón al mismo tiempo. Con un campo azul y texto blanco a 5.57:1 el borde deja de ser el identificador, y de paso el target pasa a ~300×52.
+
+**No existe `disabled`.** `#1D63D2` al 60% sobre el escalón claro deja el blanco en **1.62:1** — el estado deshabilitado que había era literalmente ilegible. El botón conserva contraste pleno y **su etiqueta dice qué falta**: `Falta elegir a quién` · `Escribí cuánto le prestás` · `Guardando…`. Al tocarlo cuando falta algo, no hace nada y el campo que falta recibe el foco.
+
+**Por qué el monto vencido NO va en rojo:** el rojo sobre el canvas da **7.2:1**; el texto pleno da **19:1**. El número que ella tiene que ver primero se renderizaría **2.6× más apagado** que uno que no le importa. Y rompe la columna: los montos mono alineados a la derecha funcionan porque se comparan de un barrido, y alternar 19:1 con 7:1 los convierte en manchas. **La barra de 3px es forma, no hue** — se ve al sol y se ve con daltonismo.
+
+**Hay UN solo rojo de urgencia: `peligro`.** `danger` y el rojo de `Mal pagador` se fundieron, porque la urgencia se cuelga de la fila de una cuota y el semáforo del bloque identidad, así que nunca coinciden. `destructivo` sobrevive solo para lo irreversible.
 
 **La separación de señales es por ELEMENTO, no por pantalla.** Es la única versión enforceable y no choca nunca:
 
 | Señal | Se cuelga de | Aparece |
 |---|---|---|
-| **Urgencia** (`danger`) | la **fila de una cuota** | donde haya una cuota, incluido el detalle del cliente |
-| **Semáforo** (confianza) | el **bloque identidad** del cliente (inicial + nombre) | donde el nombre sea identidad, incluido "Por pagar" |
+| **Urgencia** (`peligro`) | la **fila de una cuota** (o la losa entera del grupo) | donde haya una cuota, incluido el detalle del cliente |
+| **Semáforo** (confianza) | el **bloque identidad** del cliente (el nombre) | donde el nombre sea identidad, incluido "Por pagar" |
 
-No compiten porque no se cuelgan del mismo elemento. Para que tampoco compitan cromáticamente: **en "Por pagar" el semáforo va solo como palabra, sin hue, en `muted-foreground`, y solo cuando NO es Confiable** (`2 cuotas · 12 días de atraso · Ojo`). Información puesta, cero color nuevo. En la ficha del cliente el semáforo va **una sola vez, en la cabecera**; la lista de cuotas de abajo usa solo la barra de vencido.
+No compiten porque no se cuelgan del mismo elemento. Para que tampoco compitan cromáticamente: **en "Por pagar" el semáforo va solo como palabra, sin hue, y solo cuando NO es Confiable** (`2 cuotas · 12 días de atraso · Ojo`). Información puesta, cero color nuevo. En la ficha del cliente el semáforo va **una sola vez, en la cabecera**; la lista de cuotas de abajo usa solo la barra de vencido.
 
 ### 9.3 Semáforo — spec
 
@@ -357,12 +392,12 @@ Verde/naranja/rojo es el clásico fallo de accesibilidad: ~8% de los varones tie
 
 > **Regla dura: el hue NUNCA va solo. Siempre color + palabra.**
 
-| Estado (DB) | Label en UI | Color | Contraste s/ canvas |
+| Estado (DB) | Label en UI | Token | Claro / oscuro s/ adoquín |
 |---|---|---|---|
-| `verde` | **Confiable** | `success` `#34D399` | 10.3:1 |
-| `naranja` | **Ojo** | `warning` `#F59E0B` | 9.2:1 |
-| `rojo` | **Mal pagador** | `destructive` `#F87171` | 7.2:1 |
-| `nuevo` | **Nuevo** | `muted-foreground`, **sin hue** | 7.8:1 |
+| `verde` | **Confiable** | `exito` | 7.03 / 9.38 |
+| `naranja` | **Ojo** | `atencion` | 6.98 / 8.40 |
+| `rojo` | **Mal pagador** | `destructivo` | 7.88 / 6.52 |
+| `nuevo` | **Nuevo** | `texto-suave`, **sin hue** | 7.16 / 8.10 |
 
 `Mal pagador` enuncia un hecho; `No prestar` daba una **orden** sobre una decisión que Candela toma con información que la app no tiene (garante, otras condiciones). Un cartel que le dice qué hacer la hace desconfiar de la app.
 
@@ -376,12 +411,26 @@ Verde/naranja/rojo es el clásico fallo de accesibilidad: ~8% de los varones tie
 
 ### 9.4 Vocabulario de componentes
 
-| Patrón del referente | Dónde va en Lithium |
+**Los primitivos son el sistema.** Las diez pantallas no escriben materiales, componen estos. `src/components/superficie.tsx` es **el único archivo que puede escribir `bg-adoquin`, `bg-piedra`, `bg-escalon` o `bg-calle`**, y lo verifica `acento.test.ts`.
+
+| Primitivo | Qué es |
 |---|---|
-| Fila de círculos de acción (círculo `primary-tint` + icono de línea en cian + label chico) | Home: `Ya me pagó` (doble ancho, solo en su fila) · abajo `Nuevo préstamo` · `Nuevo cliente`. **Solo acciones, nunca destinos.** |
-| Cards redondeadas **separadas por gaps**, cada una con su radius | Listas de clientes, cuotas y préstamos. **Nunca líneas divisorias.** |
-| Card levantada a `surface-raised`, **sin borde y sin ring** | La cuota accionable dentro de un plan, y la fila más urgente. El destaque es **superficie + posición + tamaño del botón**, nunca color. |
-| Grid 2-up asimétrico (tile ancha + angosta) | Resumen, **una sola vez**: `Me deben` + `Vencido` |
+| `<Piedra>` | El bloque héroe. **Una por pantalla** — si hay dos, ninguna es la importante. Lleva la clase `.piedra`, que redeclara los tokens de texto adentro, así el contenido se ve igual en los dos temas y no puede volver a desaparecer. |
+| `<Losa peligro>` | Un **grupo** de filas, soldado. Con `peligro`, la barra de 3px corre **continua** a lo largo de toda la losa. |
+| `<Fila>` / `<FilaLectura>` | La unidad de 80px (con canaleta de 20px para el riel) y la fila tabla de 56px, que no lleva `active:scale` porque no se toca. |
+| `<Escalon>` | La fila accionable. **Una por pantalla.** |
+| `<Riel estado>` | El glifo de la canaleta: `✓` cobrada · `○` futura, en SVG. |
+| `<Monto>` / `<ColumnaMonto>` | El `$` compuesto aparte a 0.62em, y la columna de 108px que clava el riel derecho entre rutas. |
+| `<Boton peso>` / `<BotonLink>` / `<Volver>` | `lleno` · `fantasma` · `texto`, más el paso atrás, que tenía **cinco caras distintas** entre pantallas. |
+| `<Semaforo>` / `<Motivo>` · `<Rotulo>` / `<Bajada>` / `<HeaderDeGrupo>` / `<Nota>` · `<Campo>` / `<Segmentado>` · `<Aviso>` · `<TiraDeCuotas>` · `<Buscador>` · `<Atomo>` | El resto del vocabulario. |
+
+**REVERTIDO — "cards separadas por gaps, nunca líneas divisorias".** La regla prohibía el divisor para evitar ruido de 1px, pero el efecto real fueron **12 objetos sueltos flotando**, que es la firma exacta del dashboard generado. Una **losa** acotada con juntas de 2px es *un* objeto con 12 renglones, que es como lee un instrumento. El divisor sigue prohibido: lo que separa es **canvas asomando**, no una línea. Solo la primera fila lleva las esquinas de arriba y la última las de abajo; adentro el radius es **0**.
+
+**El `<Segmentado>` reemplazó a todos los chips** (%, cuotas, `Hoy/Ayer/Otro día`, tipo de cliente): un bloque soldado de celdas, no N píldoras sueltas, y **la celda activa es el escalón** — el mismo mecanismo que dice "actuá acá" en una lista dice "esto es lo elegido" en un control. Un concepto, seis usos.
+
+**Borrados, y no reproponer:** el `<Avatar>` de iniciales (costaba el 16% del ancho para mostrar dos letras que ya estaban al lado, y era ese ancho el que cortaba los nombres) · los cuatro círculos de íconos del Resumen y el rótulo `Atajos` (el label ya hacía todo el trabajo) · el atajo `Papeles` (era un destino disfrazado de acción) · el grid 2-up asimétrico (`Me deben` y `Vencido` no son dos tiles: son el número y su subtítulo) · las tres filas apiladas por cliente en `/clientes` · el `backdrop-blur` de la barra inferior · los `›` metidos adentro de strings (rompen el `truncate` y se cuelan en el nombre accesible) · los `✓`/`○` tipeados dentro de un `<p>`.
+
+Profundidad = **escalón de superficie**. Cero `box-shadow`, cero `backdrop-blur`, cero bordes.
 
 **Descartados del referente, con motivo** (no reproponerlos): el **wash de gradiente** del header — §9.2 dice que el acento nunca es decorativo y un wash es la definición de decorativo; además se come dos filas de gente que debe plata y "apenas perceptible" es firma de lo hecho con IA. El **ring de acento 1px como destaque** — el acento significa "tocá acá", y un borde de acento alrededor de algo que no es un botón enseña lo contrario. El **contenido que sangra** fuera de la card — se lee como que la app cargó mal.
 
@@ -399,7 +448,7 @@ Se descartaron los cinco grupos anteriores: `Mañana y pasado` y `Esta semana` s
 
 ```
 VENCIDOS · 3 personas · $180.000 ─────────────────── sticky
-▌                                                      ← barra 3px danger
+▌                                                      ← barra 3px peligro, CONTINUA sobre la losa
 ▌  Marta Suárez                             $90.000
 ▌  2 cuotas · 12 días de atraso · Ojo   [ Ya me pagó ]
 ▌
@@ -426,9 +475,9 @@ HOY · 2 personas · $95.000 ─────────────────
 
 ### 9.6 Resumen — qué mostrar y qué NO
 
-Candela es una persona sola, no un equipo de finanzas: **pocos números, grandes, con aire**. Un solo número héroe. Nada de grilla de 4 KPIs. Un tile 2-up asimétrico arriba y abajo una lista:
+Candela es una persona sola, no un equipo de finanzas: **pocos números, grandes, con aire**. Un solo número héroe. Nada de grilla de 4 KPIs. Una piedra arriba y abajo listas:
 
-1. **`Me deben`** — héroe, 34px, `foreground`, `tabular-nums`, tracking `-0.02em`. Va en el 2-up asimétrico con `Vencido`.
+1. **`Me deben`** — héroe, 44px, dentro de la piedra, con `9 personas · $180.000 vencido` como subtítulo. **Descartado el 2-up asimétrico:** `Me deben` y `Vencido` no son dos tiles, son el número y su subtítulo, y viven en la misma piedra.
 2. **`Vencido`** — 22px. **Se cuenta en personas** (`3 personas`), no en créditos: ella cuenta gente.
 3. **`Prestaste en {mes}`** — el capital que salió a la calle **este mes**, y debajo el desglose **`Con interés` / `Sin interés`** más `Vas a ganar de interés`. **Los tres números a la vez, sin toggle**: un pill que hay que acordarse de haber tocado es un código a aprender.
 4. **`Cobrás esta semana`** — es un link a `/por-pagar`.
@@ -442,20 +491,30 @@ Candela es una persona sola, no un equipo de finanzas: **pocos números, grandes
 
 ### 9.7 NO hacer — señales de "hecho con IA"
 
-- ❌ **Gradientes de cualquier tipo. Cero.** La jerarquía del header la hacen la tipografía y el aire.
+> **REVERTIDO el 2026-08-07: "cero gradientes, cero sombras, cero profundidad".** Esas tres prohibiciones se escribieron para no parecer hecho con IA y el efecto real fue una app plana que el cliente rechazó **dos veces**. La profundidad volvió, pero **como sistema**: un solo material (`.vidrio`), una sola dirección de luz, un solo degradé (el panel héroe), un solo glow (detrás del relleno de marca). Lo que sigue prohibido es la profundidad **suelta** — una sombra acá, un degradé allá, cada tarjeta con su tratamiento. Eso sí se lee como generado.
+
+- ❌ **Un gradiente que no sea el del panel héroe o el del canvas.** Ninguna tarjeta, ningún botón, ningún texto.
+- ❌ **Una sombra fuera de `.vidrio-alto` y `.con-glow`.** Nada de `shadow-lg` suelto.
 - ❌ **Emoji como iconos de UI.** Los 🟢🟠🔴 de este documento son taquigrafía nuestra — en la interfaz se renderizan como punto + palabra. (En WhatsApp sí van: §5.)
-- ❌ `shadow-lg` / `drop-shadow` en cualquier lugar.
 - ❌ Cards anidadas en cards anidadas en cards.
-- ❌ `backdrop-blur` sin contenido real scrolleando detrás (solo la barra inferior sticky califica, con fallback opaco).
+- ❌ `backdrop-blur` fuera de `.barra-vidrio`, que es el único lugar con contenido real scrolleando detrás. Siempre con fallback opaco.
 - ❌ `max-w-7xl mx-auto` con el contenido flotando en el medio. Esto es una herramienta enfocada.
-- ❌ **Grids de tiles iguales.** El 2-up asimétrico existe **una** vez, arriba del Resumen; el resto de los números viven en una lista, no en tiles.
-- ❌ `rounded-lg` en absolutamente todo — respetar la jerarquía de radius de 9.1.
+- ❌ **Grids de tiles iguales**, y **N tarjetas flotando separadas por el mismo gap**. Un grupo es **una losa cortada** (§9.4), no doce objetos sueltos.
+- ❌ **Un radio uniforme.** El default es 0 y cada radio se pide por nombre (§9.1).
 - ❌ Inter en su tracking default. Varios acentos peleando. Copy placeholder tipo *"Gestioná tus créditos con facilidad"*.
 - ❌ Estados de empty sin diseñar.
-- ❌ **Que el número principal cambie de lugar o de tamaño entre pantallas.** Mismo lugar, mismo tamaño, siempre.
-- ❌ **Skeletons de 40 filas.** `Por pagar`, `Clientes` y `Resumen` son RSC server-rendered: no hay primer loading. Skeleton solo en el buscador (único fetch cliente real), y ahí **isomorfo**: misma altura (76px), mismo radius, mismos anchos que la fila real, `animate-pulse` a `1.4s`.
+- ❌ **Que el número principal cambie de lugar o de tamaño entre pantallas.** Mismo lugar, mismo tamaño, siempre: **2.75rem** en Resumen, ficha y detalle.
+- ❌ **Skeletons.** Las tres tabs son RSC server-rendered y el buscador filtra en memoria: no hay ninguna espera real que fingir.
+- ❌ **`disabled` en un botón.** El azul apagado deja el blanco en 1.62:1. El botón dice qué falta y enfoca ese campo (§9.2).
+- ❌ **Flechas `›` metidas adentro de un string.** Rompen el `truncate` y se cuelan en el nombre accesible. Si hace falta una flecha, es un SVG.
+- ❌ **Bordes sólidos.** Lo que separa es el material, el hairline y la junta de 2px.
+- ❌ **Dos superficies con el mismo color.** Ya pasó dos veces y las dos mató el modo claro. Lo verifica `tema.test.ts`.
 
-**Señales de trabajo humano:** montos en mono alineados a la derecha · `focus-visible` cian de 2px que se ve de verdad · el punto del semáforo alineado ópticamente a la altura-x del nombre · motion solo al cambiar estado (150–200ms), nunca al cargar la página · castellano que suena a como habla Candela.
+**Señales de trabajo humano:** el `$` compuesto aparte a 0.62em y los montos alineados sobre una columna que está en la **misma x en cuatro rutas** · la barra de peligro corriendo **continua** sobre filas soldadas, que una lista con gaps es incapaz de decir · la nota del cliente marcada como **cita**, porque es lo único de la pantalla que escribió ella · el átomo de la marca apareciendo en los dos únicos momentos que importan (cuando no hay nada que cobrar, y mientras se está guardando un cobro) · `focus-visible` de 2px que cambia de azul a cian según el tema porque el cian sobre el escalón claro da 1.45:1 · motion solo al cambiar estado, nunca al cargar la página · castellano que suena a como habla Candela.
+
+**El movimiento va por `.presionable` y por los tokens de easing** (§9.1), nunca con un ms suelto en un componente. La transición más importante es el **press**: entra en 90ms y sale en 220. No es opcional — es lo único que hace que una superficie se sienta física, y con juntas de 2px es también lo que dice *cuál* fila se tocó antes de soltar.
+
+**Las skills de diseño instaladas se usan, no se delegan a ciegas.** `frontend-design` (Anthropic) para elegir dirección antes de escribir código, `ui-ux-pro-max` para consultar su base de estilos y paletas, y **`styleseed-design-review` para puntuar la pantalla contra un rubro de 74 reglas** antes de darla por buena. El último es el que importa: convierte "a mí me parece linda" en un número con deducciones citadas por línea. Correrlo después de tocar la UI.
 
 Descartada la regla anterior "una asimetría deliberada por pantalla": en manos de un agente produce rarezas arbitrarias y hace que el número grande esté en un lugar distinto en cada pantalla.
 
@@ -486,27 +545,35 @@ Iconos lucide dimensionados contra la altura de mayúscula del texto vecino, con
 
 ### 9.10 Escala tipográfica
 
+**Cinco tamaños, no nueve.** El 13px (`text-[0.8125rem]`) y el 15px (`text-[0.9375rem]`) **se borraron de toda la app**: estaban a 1px uno del otro y una escala sin huecos no tiene ritmo.
+
 | Rol | Clases |
 |---|---|
-| Monto héroe | `text-[2.125rem] font-semibold tracking-[-0.02em] leading-[1.05] tabular-nums` (sans) |
-| Header de sección | `text-[1.0625rem] font-semibold tracking-[-0.01em]` |
-| Nombre en fila | `text-[0.9375rem] font-semibold tracking-[-0.006em]` |
-| Monto de fila | `font-mono text-[0.875rem] tracking-[-0.01em] tabular-nums` |
-| Secundario de fila / fecha | `text-[0.8125rem] font-medium text-foreground` |
-| Label / caption | `text-[0.8125rem] font-medium text-muted-foreground` |
-| Header de grupo sticky | `text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground` |
-| Botón | `text-[0.8125rem] font-semibold` |
+| Héroe (el número de la piedra) | `text-[2.75rem] font-semibold leading-[1.0] tracking-[-0.035em]` (sans) |
+| Título de bloque / nombre en ficha | `text-[1.375rem] font-semibold tracking-[-0.02em]` |
+| Nombre en fila | `text-[1rem] font-semibold tracking-[-0.011em]` |
+| Monto de fila | `font-mono text-[0.95rem] font-medium tracking-[-0.01em]` |
+| Cuerpo · 2ª línea · label · botón | `text-[0.875rem] font-medium tracking-[-0.006em]` |
+| Rótulo de grupo / caption | `text-[0.75rem] font-semibold uppercase tracking-[0.09em]` |
+| Todo input | `text-[1rem]` mínimo — abajo de 16px Safari hace zoom al enfocar y la pantalla salta |
 
-**La fecha va en `foreground`, no en `muted-foreground`.** Acá la fecha no es un caption: es el motivo por el que abrió la app, y se lee en la calle con sol y con una mano. El gris apagado se guarda para lo que se puede no leer.
+**El héroe mide 2.75rem en las tres pantallas que lo tienen** (Resumen, ficha de cliente, detalle de préstamo). Antes medía 2.75 / 1.375 / 2.125: el número principal cambiaba de tamaño según dónde estuvieras, que es lo que §9.7 prohíbe por nombre.
 
-### 9.11 Buscador
+**La fecha va en `texto`, no en `texto-suave`.** Acá la fecha no es un caption: es el motivo por el que abrió la app, y se lee en la calle con sol y con una mano. El gris apagado se guarda para lo que se puede no leer.
+
+### 9.11 Buscador — **hecho** (2026-08-07)
 
 La escena real: alguien golpea la puerta, le da plata, y **no está en "Por pagar"** porque paga adelantado o porque su cuota es de septiembre. Sin buscador eso se anota en el cuaderno — y si vuelve al cuaderno una vez, ya volvió al cuaderno.
 
-- **Sticky arriba, en los tres tabs, siempre visible.** Con label, nunca una lupa sola (§9.0).
-- Busca por nombre, **acento-insensible**, match por prefijo de cualquier palabra (`mar` → Marta Suárez, Ana Marín).
-- Cada resultado en una línea: nombre + palabra del semáforo + **cuánto debe en total**, y el botón `Ya me pagó` si tiene alguna cuota impaga. **Tres letras y cobra.**
-- Sin resultados: `No hay nadie con "mar".` + `Nuevo cliente ›`.
+`src/components/buscador.tsx`. **Envuelve el contenido del tab** en vez de vivir al lado: mientras hay algo escrito, los resultados **reemplazan** la pantalla — ver dos listas a la vez obliga a decidir cuál mirar.
+
+- **Sticky arriba, en los tres tabs, siempre visible.** Con label, nunca una lupa sola (§9.0). Su alto es fijo (`--alto-buscador`) porque los headers de grupo se pegan justo abajo; con los dos en `top-0` el header quedaba escondido atrás.
+- Busca por nombre con `buscar()`, **acento-insensible**, match por prefijo de cualquier palabra (`mar` → Marta Suárez, Ana Marín).
+- Cada resultado: nombre + semáforo + **cuánto debe en total**, y la píldora fantasma `Ya me pagó` que va derecho a su cuota impaga más próxima (`cuotaImpagaId`, que ahora devuelve `traerClientes()`). **Tres letras y cobra.**
+- **Sin skeleton, a propósito:** la lista completa ya vino en el render del server y el filtrado es sincrónico. Un skeleton acá sería una animación fingiendo una espera que no existe.
+- Sin resultados: `No hay nadie con "mar".` + `Cliente nuevo`.
+
+**Borrar el `<Avatar>` obligaba a construir esto en el mismo commit:** el avatar era el único ancla de color con la que se encontraba un nombre por forma. Sacarlo sin buscador dejaba una sola manera de encontrar a alguien: scrollear leyendo.
 
 ### 9.12 Detalle del préstamo y plan de cuotas
 
@@ -529,9 +596,9 @@ La escena real: alguien golpea la puerta, le da plata, y **no está en "Por paga
     ✓  2   cobrada 6 días tarde · 16/5        $133.000    ← "6 días tarde" en warning
     ✓  3   cobrada el 10/6                    $133.000
 
- ┌──────────────────────────────────────────────────────┐  ← surface-raised
+ ┌──────────────────────────────────────────────────────┐  ← el ESCALÓN
  ▌│  Cuota 4 de 6                              $87.000  │  ← monto en foreground
- ▌│  12 días de atraso — vencía el 10/7                 │  ← línea en danger
+ ▌│  12 días de atraso — vencía el 10/7                 │  ← línea en peligro
  ▌│                              [   Ya me pagó   ]     │  ← azul lleno, 48px
  └──────────────────────────────────────────────────────┘
 
@@ -539,8 +606,9 @@ La escena real: alguien golpea la puerta, le da plata, y **no está en "Por paga
     ○  6   vence el jueves 10/9                $87.000
 ```
 
-- **La tira tiene exactamente `cantidad_cuotas` segmentos** — honesta y auto-explicativa, nunca necesita leyenda. `foreground` llena, `border` vacía. **Cero color de estado en los segmentos**: una muesca o un tercer color sería un código a aprender. **Nunca un porcentaje**: "50%" no significa nada, "3 de 6" es instantáneo.
-- **Riel izquierdo de glyphs, no de colores:** `✓` cobrada · `○` futura · `▌` (barra `danger`) la vencida.
+- **La tira tiene exactamente `cantidad_cuotas` segmentos** — honesta y auto-explicativa, nunca necesita leyenda. `texto` llena, el mismo `texto` al 22% vacía. **Cero color de estado en los segmentos**: una muesca o un tercer color sería un código a aprender. **Nunca un porcentaje**: "50%" no significa nada, "3 de 6" es instantáneo. Vive siempre adentro de la piedra (`<TiraDeCuotas>`).
+- **Riel izquierdo de glyphs, no de colores:** `✓` cobrada · `○` futura · `▌` (barra `peligro`) la vencida. Son **SVG**, no caracteres tipeados adentro de un `<p>` — esos se leen en voz alta como "marca de verificación" y no escalan con el texto.
+- **Todas las cuotas impagas conservan su botón**, no solo la levantada: te pagan la 2 antes que la 1 todo el tiempo. La levantada se lleva el relleno azul; las demás, la píldora fantasma (§9.2).
 - **Una sola cuota levantada por pantalla: la impaga de menor `numero`.** Si hay tres vencidas, la levantada es la más vieja; las otras quedan calladas con su barra y **sin botón**. Una sola acción primaria.
 - **Pagada tarde es texto, nunca un badge.** El color va **solo** en "6 días tarde", en `warning` — el mismo naranja de `Ojo`, porque es literalmente la causa de que esté en Ojo. No es un color nuevo: es el color de la consecuencia.
 - **La cabecera nunca lleva botón.** Se cobra *una cuota*, no *un préstamo*. Que la acción viva pegada a la fila que modifica es lo que hace que no se pueda equivocar.

@@ -1,13 +1,17 @@
-import Link from "next/link";
-
 import { listarUsuarias } from "@/app/acciones-usuarios";
-import { Avatar } from "@/components/semaforo";
+import { Aviso } from "@/components/aviso";
+import { BotonLink } from "@/components/boton";
+import { Fila, Losa, Piedra } from "@/components/superficie";
 import { createClient } from "@/lib/supabase/server";
 
 import { AltaDeUsuaria } from "./alta";
 
 export const metadata = { title: "Usuarias — Lithium" };
 
+/**
+ * La pantalla más callada de la app, a propósito: se entra una vez cada seis
+ * meses. Nada acá se toca seguido, así que nada acá pide atención.
+ */
 export default async function UsuariasPage() {
   const supabase = await createClient();
   const {
@@ -16,63 +20,85 @@ export default async function UsuariasPage() {
 
   const esSuper = user?.app_metadata?.super === true;
 
+  // Si la pantalla es un no, el no es el héroe. Antes el no llegaba como un
+  // párrafo gris abajo de un título, que se lee como que algo falló.
   if (!esSuper) {
     return (
-      <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-5">
-        <h1 className="text-[1.0625rem] font-semibold text-foreground">Usuarias</h1>
-        <p className="mt-4 rounded-xl bg-card p-5 text-[0.8125rem] font-medium text-muted-foreground">
-          No tenés permiso para administrar usuarias. Pedíselo a quien te dio el acceso.
-        </p>
-        <Link
-          href="/"
-          className="mt-4 inline-flex h-12 items-center text-[0.8125rem] font-semibold text-primary-text"
+      <main className="mx-auto w-full max-w-[520px] px-4 pb-28 pt-3">
+        <h1 className="sr-only">Usuarias</h1>
+        <Aviso
+          tono="calma"
+          titulo="Esta parte no es tuya"
+          acciones={
+            <BotonLink peso="texto" href="/" className="justify-center">
+              Volver al resumen
+            </BotonLink>
+          }
         >
-          ‹ Volver
-        </Link>
+          Pedísela a quien te dio el acceso.
+        </Aviso>
       </main>
     );
   }
 
   const { usuarias, error } = await listarUsuarias();
 
-  return (
-    <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-5">
-      <h1 className="text-[1.0625rem] font-semibold tracking-[-0.01em] text-foreground">
-        Usuarias
-      </h1>
-      <p className="mt-1 text-[0.8125rem] font-medium text-muted-foreground">
-        Quién puede entrar a Lithium.
-      </p>
-
-      <h2 className="mt-7 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        Nueva usuaria
-      </h2>
-      <AltaDeUsuaria />
-
-      <h2 className="mt-7 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        Las que ya entran · {usuarias.length}
-      </h2>
-
-      {error ? (
-        <p className="mt-2 rounded-xl bg-card p-5 text-[0.8125rem] font-medium text-danger">
+  if (error) {
+    return (
+      <main className="mx-auto w-full max-w-[520px] px-4 pb-28 pt-3">
+        <h1 className="sr-only">Usuarias</h1>
+        <Aviso
+          tono="error"
+          titulo="No se pudo traer quién entra."
+          acciones={
+            <BotonLink peso="texto" href="/" className="justify-center">
+              Volver al resumen
+            </BotonLink>
+          }
+        >
           {error}
+        </Aviso>
+      </main>
+    );
+  }
+
+  const supers = usuarias.filter((u) => u.esSuper).length;
+
+  return (
+    <main className="mx-auto w-full max-w-[520px] px-4 pb-28 pt-3">
+      <Piedra>
+        <h1 className="text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
+          Pueden entrar a Lithium
+        </h1>
+        <p className="mt-2 font-display text-[2.75rem] font-bold leading-[0.98] tracking-[-0.04em]">
+          {usuarias.length}
         </p>
-      ) : (
-        <ul className="mt-2 flex flex-col gap-2">
-          {usuarias.map((u) => (
-            <li key={u.id} className="flex items-center gap-3 rounded-xl bg-card px-4 py-3.5">
-              <Avatar nombre={u.email} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[0.9375rem] font-semibold text-foreground">{u.email}</p>
-                <p className="mt-0.5 text-[0.8125rem] font-medium text-muted-foreground">
-                  {u.esSuper ? "Puede crear usuarias" : "Ve y carga préstamos"}
-                  {u.email === user?.email ? " · sos vos" : ""}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+        <p className="mt-2 text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
+          {usuarias.length === 1 ? "una usuaria" : `${usuarias.length} usuarias`} ·{" "}
+          {supers === 1 ? "1 puede crear otras" : `${supers} pueden crear otras`}
+        </p>
+      </Piedra>
+
+      {/* El alta es la ÚLTIMA fila de esta misma losa, no un formulario suelto
+          arriba: antes lo primero que veía al entrar era un form vacío, que es
+          la app pidiéndole trabajo apenas abre. */}
+      <Losa className="mt-8">
+        {usuarias.map((u) => (
+          <Fila key={u.id}>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[1rem] font-semibold tracking-[-0.011em]">{u.email}</p>
+              <p className="mt-0.5 text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
+                {u.esSuper ? "Puede crear usuarias" : "Ve y carga préstamos"}
+                {u.email === user?.email ? (
+                  <span className="text-marca-texto"> · sos vos</span>
+                ) : null}
+              </p>
+            </div>
+          </Fila>
+        ))}
+
+        <AltaDeUsuaria />
+      </Losa>
     </main>
   );
 }

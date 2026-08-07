@@ -5,7 +5,7 @@ export function BotonSalir() {
     <form action={salir}>
       <button
         type="submit"
-        className="flex h-12 items-center px-1 text-[0.8125rem] font-medium text-muted-foreground"
+        className="flex h-12 items-center px-1 text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave"
       >
         Salir
       </button>

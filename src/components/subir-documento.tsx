@@ -3,6 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 
+import { Atomo } from "@/components/atomo";
+import { Boton } from "@/components/boton";
+import { Campo, INPUT } from "@/components/campo";
+import { hoyEnBA } from "@/lib/fecha";
 import { esPDF, ErrorDeImagen, prepararImagen } from "@/lib/imagen";
 import { createClient } from "@/lib/supabase/client";
 
@@ -13,13 +17,27 @@ type Props = {
   tipo: string;
   etiqueta: string;
   pidePeriodo: boolean;
+  /**
+   * Solo el primer requisito incompleto —el que va en el escalón— se lleva el
+   * relleno de marca. Hay uno por pantalla: si hay dos, ninguno es el que hay
+   * que tocar. A los demás no se les saca la acción, se les saca el peso.
+   */
+  destacado?: boolean;
 };
 
-/** Los últimos 6 meses, para elegir el período con un toque. */
+/**
+ * Los últimos 6 meses, para elegir el período con un toque.
+ *
+ * Sale de `hoyEnBA()` y no de `new Date()`: este componente también se renderiza
+ * en el server, que corre en UTC. El 1° de mes a las 21:00 de Argentina el
+ * server ya está en el mes siguiente y el navegador no — el default del select
+ * saldría distinto de cada lado, React tiraría desajuste de hidratación y el
+ * documento quedaría cargado con el mes equivocado.
+ */
 function ultimosMeses(cantidad = 6) {
-  const hoy = new Date();
+  const [anio, mes] = hoyEnBA().split("-").map(Number);
   return Array.from({ length: cantidad }, (_, i) => {
-    const d = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - i, 1));
+    const d = new Date(Date.UTC(anio, mes - 1 - i, 1));
     const valor = d.toISOString().slice(0, 10);
     const nombre = new Intl.DateTimeFormat("es-AR", {
       timeZone: "UTC",
@@ -30,7 +48,7 @@ function ultimosMeses(cantidad = 6) {
   });
 }
 
-export function BotonSubir({ clienteId, tipo, etiqueta, pidePeriodo }: Props) {
+export function BotonSubir({ clienteId, tipo, etiqueta, pidePeriodo, destacado = false }: Props) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const idInput = useId();
@@ -113,21 +131,18 @@ export function BotonSubir({ clienteId, tipo, etiqueta, pidePeriodo }: Props) {
   }
 
   return (
-    <div className="mt-3">
+    <div className="mt-3 flex flex-col gap-2.5">
+      {/* El período es el mes al que corresponde el papel, no el día que se
+          subió: "están todos" y "están todos, pero viejos" son dos cosas
+          distintas y de eso depende si conviene prestar. */}
       {pidePeriodo ? (
-        <div className="mb-2">
-          <label
-            htmlFor={`${idInput}-periodo`}
-            className="text-[0.8125rem] font-medium text-muted-foreground"
-          >
-            ¿De qué mes es?
-          </label>
+        <Campo label="Mes del papel" htmlFor={`${idInput}-periodo`}>
           <select
             id={`${idInput}-periodo`}
             value={periodo}
             onChange={(e) => setPeriodo(e.target.value)}
             disabled={trabajando}
-            className="mt-1 h-12 w-full rounded-lg border border-border bg-background px-3 text-base text-foreground"
+            className={INPUT}
           >
             {meses.map((m) => (
               <option key={m.valor} value={m.valor}>
@@ -135,7 +150,7 @@ export function BotonSubir({ clienteId, tipo, etiqueta, pidePeriodo }: Props) {
               </option>
             ))}
           </select>
-        </div>
+        </Campo>
       ) : null}
 
       <input
@@ -148,43 +163,54 @@ export function BotonSubir({ clienteId, tipo, etiqueta, pidePeriodo }: Props) {
         accept="image/*,application/pdf"
         onChange={alElegir}
         disabled={trabajando}
+        // `tabIndex={-1}`: el input está oculto y lo dispara el botón de abajo.
+        // Sin esto el teclado para primero acá, en un control invisible y sin
+        // foco visible, y recién en el siguiente tab llega al botón.
+        tabIndex={-1}
         className="sr-only"
       />
 
-      {/* Grande, con ícono de clip y diciendo que acepta foto o PDF: el botón
-          chico no leía como "adjuntar un archivo" y no se encontraba. */}
-      <button
+      {/* Diciendo que acepta foto o PDF: el botón chico no leía como "adjuntar un
+          archivo" y no se encontraba. Nunca se deshabilita —el azul apagado deja
+          el blanco en 1.62:1, ilegible al sol—: mientras trabaja lo dice la
+          etiqueta, con el átomo girando, y el segundo toque se ignora. */}
+      <Boton
+        peso={destacado ? "lleno" : "texto"}
         type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={trabajando}
-        className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-primary text-[0.9375rem] font-semibold text-primary-foreground disabled:opacity-60"
+        onClick={() => (trabajando ? undefined : inputRef.current?.click())}
+        className="gap-2"
       >
-        <svg
-          viewBox="0 0 24 24"
-          aria-hidden
-          className="size-[19px] shrink-0"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.75}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-        </svg>
+        {trabajando ? (
+          <Atomo size={18} girando />
+        ) : (
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden
+            className="size-[17px] shrink-0 translate-y-[0.5px]"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.75}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+          </svg>
+        )}
         {estado === "procesando"
           ? "Preparando el archivo…"
           : estado === "subiendo"
-            ? "Subiendo…"
+            ? "Guardando…"
             : `Adjuntar ${etiqueta.toLowerCase()}`}
-      </button>
-      <p className="mt-1.5 text-center text-[0.8125rem] font-medium text-muted-foreground">
-        Sacá una foto o elegí un PDF del teléfono
+      </Boton>
+      <p className="text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
+        Sacá una foto o elegí un PDF del teléfono.
       </p>
 
       <p
         role="alert"
-        aria-live="polite"
-        className={`mt-2 text-[0.8125rem] font-medium text-danger ${error ? "" : "sr-only"}`}
+        className={`text-[0.875rem] font-medium tracking-[-0.006em] text-peligro ${
+          error ? "" : "sr-only"
+        }`}
       >
         {error ?? ""}
       </p>

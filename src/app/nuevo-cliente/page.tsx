@@ -1,68 +1,64 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useState } from "react";
 
+import { Boton, Volver } from "@/components/boton";
+import { Campo, INPUT, Segmentado, TEXTAREA } from "@/components/campo";
+import { Bajada, Rotulo } from "@/components/rotulo";
+import { FilaLectura, Losa } from "@/components/superficie";
 import { NOMBRE_TIPO_CLIENTE, REQUISITOS, type TipoCliente } from "@/lib/documentacion";
 
 import { crearCliente, type EstadoNuevoCliente } from "./actions";
 
 const INICIAL: EstadoNuevoCliente = { error: null };
 
-const campo =
-  "h-12 w-full rounded-lg border border-border bg-card px-4 text-base text-foreground placeholder:text-muted-subtle disabled:opacity-60";
-
-const TIPOS = Object.keys(NOMBRE_TIPO_CLIENTE) as TipoCliente[];
+const TIPOS = (Object.keys(NOMBRE_TIPO_CLIENTE) as TipoCliente[]).map((t) => ({
+  valor: t,
+  label: NOMBRE_TIPO_CLIENTE[t],
+}));
 
 export default function NuevoClientePage() {
   const [estado, accion, enviando] = useActionState(crearCliente, INICIAL);
   const [tipo, setTipo] = useState<TipoCliente | "">("");
+  const [nombre, setNombre] = useState("");
 
   const requisitos = tipo ? REQUISITOS[tipo] : [];
+  // Es lo único que la base exige. Todo lo demás se completa después, porque
+  // esto se carga parada en la puerta de la casa de alguien.
+  const listo = nombre.trim().length >= 2;
 
   return (
-    <main className="mx-auto w-full max-w-md px-5 pb-16 pt-8">
-      <Link
-        href="/clientes"
-        className="inline-flex h-12 items-center text-[0.8125rem] font-semibold text-primary-text"
-      >
-        ‹ Volver
-      </Link>
+    <main className="mx-auto w-full max-w-[520px] px-4 pb-28 pt-3">
+      <Volver href="/clientes">Volver a clientes</Volver>
 
-      <h1 className="mt-2 text-[1.375rem] font-semibold tracking-[-0.01em] text-foreground">
-        Cliente nuevo
-      </h1>
-      <p className="mb-8 mt-1 text-[0.8125rem] font-medium text-muted-foreground">
+      <h1 className="mt-2.5 font-display text-[1.375rem] font-bold tracking-[-0.025em]">Cliente nuevo</h1>
+      <p className="mt-1 text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
         Con el nombre alcanza para guardarlo. El resto se puede completar después.
       </p>
 
-      <form action={accion} className="flex flex-col gap-5">
+      <form action={accion} className="mt-8 flex flex-col gap-8">
         <input type="hidden" name="tipo" value={tipo} />
 
-        <div className="flex flex-col gap-1">
-          <label htmlFor="nombre" className="text-[0.9375rem] font-semibold text-foreground">
-            Nombre y apellido
-          </label>
+        <Campo label="Nombre y apellido" htmlFor="nombre">
           <input
             id="nombre"
             name="nombre"
-            required
             autoFocus
             autoCapitalize="words"
             enterKeyHint="next"
             disabled={enviando}
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
             placeholder="Marta Suárez"
-            className={campo}
+            className={INPUT}
           />
-        </div>
+        </Campo>
 
-        <div className="flex flex-col gap-1">
-          <label htmlFor="telefono" className="text-[0.9375rem] font-semibold text-foreground">
-            Teléfono
-          </label>
-          <p className="text-[0.8125rem] font-medium text-muted-foreground">
-            Para poder escribirle cuando se atrase.
-          </p>
+        <Campo
+          label="Teléfono"
+          htmlFor="telefono"
+          ayuda="Para poder escribirle cuando se atrase."
+        >
           <input
             id="telefono"
             name="telefono"
@@ -71,110 +67,119 @@ export default function NuevoClientePage() {
             enterKeyHint="next"
             disabled={enviando}
             placeholder="+54 9 261 111 1111"
-            className={`${campo} mt-1`}
+            className={INPUT}
           />
-        </div>
+        </Campo>
 
         {/* El tipo define qué papeles pedirle. Se puede dejar sin elegir: frenar
-            un alta por una clasificación sería fricción de más (§9.0). */}
-        <fieldset className="flex flex-col gap-1">
-          <legend className="text-[0.9375rem] font-semibold text-foreground">Tipo de cliente</legend>
-          <p className="text-[0.8125rem] font-medium text-muted-foreground">
-            Determina qué documentación hay que pedirle. Se puede completar después.
-          </p>
-
-          <div className="mt-2 flex flex-wrap gap-2">
-            {TIPOS.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTipo(tipo === t ? "" : t)}
-                disabled={enviando}
-                className={`h-12 rounded-full px-4 text-[0.8125rem] font-semibold ${
-                  tipo === t ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"
-                }`}
-              >
-                {NOMBRE_TIPO_CLIENTE[t]}
-              </button>
-            ))}
-          </div>
+            un alta por una clasificación sería fricción de más. */}
+        <div>
+          <Rotulo>Tipo de cliente</Rotulo>
+          <Bajada>Determina qué documentación hay que pedirle. Se puede completar después.</Bajada>
+          <Segmentado
+            etiqueta="Tipo de cliente"
+            className="mt-2.5"
+            columnas={2}
+            opciones={TIPOS}
+            valor={tipo === "" ? null : tipo}
+            // Volver a tocar el elegido lo suelta: si se equivocó de tipo y
+            // todavía no sabe cuál es, tiene que poder dejarlo sin decidir.
+            onChange={(v) => setTipo(v === tipo ? "" : v)}
+          />
 
           {/* Decir qué papeles va a pedir ANTES de guardar: así sabe qué tiene
-              que juntar mientras la persona está enfrente. */}
-          {requisitos.length > 0 ? (
-            <div className="mt-3 rounded-xl bg-card p-4">
-              <p className="text-[0.8125rem] font-medium text-muted-foreground">
-                Documentación a presentar:
-              </p>
-              <ul className="mt-2 flex flex-col gap-1">
+              que juntar mientras la persona está enfrente. Es el único
+              movimiento de la pantalla, y es el que explica qué cambió al
+              elegir el tipo. */}
+          <div
+            className="grid transition-[grid-template-rows] duration-200 ease-salida"
+            style={{ gridTemplateRows: requisitos.length > 0 ? "1fr" : "0fr" }}
+          >
+            <div className="overflow-hidden">
+              <Rotulo className="block pt-6">Papeles que le vas a pedir</Rotulo>
+              <Losa className="mt-2.5">
                 {requisitos.map((r) => (
-                  <li key={r.tipo} className="text-[0.8125rem] font-medium text-foreground">
-                    · {r.label}
-                  </li>
+                  <FilaLectura key={r.tipo}>
+                    <p className="text-[0.875rem] font-medium tracking-[-0.006em]">{r.label}</p>
+                  </FilaLectura>
                 ))}
-              </ul>
+              </Losa>
             </div>
-          ) : null}
-        </fieldset>
+          </div>
+        </div>
 
-        {/* El garante aparece solo en PAMI, que es donde se pide — pero los
-            campos NUNCA son obligatorios. */}
+        {/* El garante se pide en PAMI, pero los campos NUNCA son obligatorios:
+            exigirlos frenaría el alta de alguien parada en la puerta. */}
         {tipo === "pami" ? (
-          <fieldset className="flex flex-col gap-1 rounded-xl bg-card p-4">
-            <legend className="px-1 text-[0.9375rem] font-semibold text-foreground">Garante</legend>
-            <p className="text-[0.8125rem] font-medium text-muted-foreground">
-              Opcional. Si alguna vez hay que reclamarle, vas a necesitar el teléfono.
-            </p>
+          <Campo
+            label="Garante"
+            ayuda="Opcional. Si alguna vez hay que reclamarle, vas a necesitar el teléfono."
+          >
             <input
               name="garante_nombre"
+              aria-label="Nombre del garante"
               autoCapitalize="words"
               disabled={enviando}
               placeholder="Nombre del garante"
-              className={`${campo} mt-2 bg-background`}
+              className={INPUT}
             />
             <input
               name="garante_telefono"
+              aria-label="Teléfono del garante"
               type="tel"
               inputMode="tel"
               disabled={enviando}
               placeholder="Su teléfono"
-              className={`${campo} mt-2 bg-background`}
+              className={`${INPUT} mt-2`}
             />
-          </fieldset>
+          </Campo>
         ) : null}
 
-        <div className="flex flex-col gap-1">
-          <label htmlFor="notas" className="text-[0.9375rem] font-semibold text-foreground">
-            Observaciones
-          </label>
-          <p className="text-[0.8125rem] font-medium text-muted-foreground">
-            Aparecen en la lista de cobros. Para lo que cambia cómo cobrarle.
-          </p>
+        <Campo
+          label="Observaciones"
+          htmlFor="notas"
+          ayuda="Aparecen en la lista de cobros. Para lo que cambia cómo cobrarle."
+        >
           <textarea
             id="notas"
             name="notas"
             rows={3}
             disabled={enviando}
             placeholder="Paga los días 3 — no atiende, mandale mensaje"
-            className="mt-1 w-full rounded-lg border border-border bg-card px-4 py-3 text-base text-foreground placeholder:text-muted-subtle disabled:opacity-60"
+            className={TEXTAREA}
           />
+        </Campo>
+
+        <div>
+          <p
+            role="alert"
+            className={`mb-2.5 text-[0.875rem] font-medium tracking-[-0.006em] text-peligro ${
+              estado.error ? "" : "sr-only"
+            }`}
+          >
+            {estado.error ?? ""}
+          </p>
+
+          {/* No existe `disabled`: el botón mantiene contraste pleno y su
+              etiqueta dice qué falta. Al tocarlo cuando falta el nombre no hace
+              nada y el campo que falta recibe el foco. */}
+          <Boton
+            peso="lleno"
+            type="submit"
+            onClick={(e) => {
+              if (enviando) {
+                e.preventDefault();
+                return;
+              }
+              if (!listo) {
+                e.preventDefault();
+                document.getElementById("nombre")?.focus();
+              }
+            }}
+          >
+            {enviando ? "Guardando…" : listo ? "Guardar el cliente" : "Falta el nombre"}
+          </Boton>
         </div>
-
-        <p
-          role="alert"
-          aria-live="polite"
-          className={`text-[0.8125rem] font-medium text-danger ${estado.error ? "" : "sr-only"}`}
-        >
-          {estado.error ?? ""}
-        </p>
-
-        <button
-          type="submit"
-          disabled={enviando}
-          className="h-14 rounded-full bg-primary text-[0.9375rem] font-semibold text-primary-foreground disabled:opacity-60"
-        >
-          {enviando ? "Guardando…" : "Guardar el cliente"}
-        </button>
       </form>
     </main>
   );

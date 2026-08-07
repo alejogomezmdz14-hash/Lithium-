@@ -6,8 +6,11 @@ import { useState } from "react";
 import { borrarDocumento } from "@/app/acciones-documentos";
 
 /**
- * Borrar un documento SÍ pide confirmación: §9.0 dice que solo lo irreversible
- * la lleva, y esto lo es — el archivo se va de Storage y no hay deshacer.
+ * Borrar un documento SÍ pide confirmación: solo lo irreversible la lleva, y
+ * esto lo es — el archivo se va de Storage y no hay deshacer.
+ *
+ * Va en `destructivo`, que es un rojo distinto del de la urgencia a propósito:
+ * `peligro` dice "esto te vence", `destructivo` dice "esto no vuelve".
  */
 export function BorrarDocumento({ id }: { id: string }) {
   const router = useRouter();
@@ -16,6 +19,9 @@ export function BorrarDocumento({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
 
   async function confirmar() {
+    // Nada se deshabilita: el segundo toque se ignora acá y la etiqueta dice
+    // que está trabajando.
+    if (borrando) return;
     setBorrando(true);
     setError(null);
     const { error } = await borrarDocumento(id);
@@ -29,25 +35,27 @@ export function BorrarDocumento({ id }: { id: string }) {
   }
 
   if (error) {
-    return <span className="text-[0.8125rem] font-medium text-danger">{error}</span>;
+    return (
+      <span role="alert" className="text-[0.875rem] font-medium tracking-[-0.006em] text-peligro">
+        {error}
+      </span>
+    );
   }
 
   if (confirmando) {
     return (
-      <span className="flex shrink-0 items-center gap-2">
+      <span className="flex shrink-0 items-center gap-1">
         <button
           type="button"
           onClick={confirmar}
-          disabled={borrando}
-          className="h-12 px-2 text-[0.8125rem] font-semibold text-destructive disabled:opacity-60"
+          className="h-12 px-2 text-[0.875rem] font-semibold tracking-[-0.006em] text-destructivo"
         >
           {borrando ? "Borrando…" : "Sí, borrar"}
         </button>
         <button
           type="button"
-          onClick={() => setConfirmando(false)}
-          disabled={borrando}
-          className="h-12 px-2 text-[0.8125rem] font-medium text-muted-foreground"
+          onClick={() => (borrando ? undefined : setConfirmando(false))}
+          className="h-12 px-2 text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave"
         >
           No
         </button>
@@ -59,7 +67,7 @@ export function BorrarDocumento({ id }: { id: string }) {
     <button
       type="button"
       onClick={() => setConfirmando(true)}
-      className="h-12 shrink-0 px-2 text-[0.8125rem] font-medium text-muted-foreground"
+      className="h-12 shrink-0 px-2 text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave"
     >
       Borrar
     </button>

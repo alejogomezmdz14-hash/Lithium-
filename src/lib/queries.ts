@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 const ORDEN_SEMAFORO: Record<Semaforo, number> = { rojo: 0, naranja: 1, nuevo: 2, verde: 3 };
 
 type CuotaImpagaCruda = {
+  id: string;
   monto: number | string;
   fecha_cobro: string;
   credito_id: string;
@@ -26,7 +27,7 @@ async function traerImpagas(supabase: Awaited<ReturnType<typeof createClient>>) 
   const { data, error } = await supabase
     .from("cuotas")
     .select(
-      "monto,fecha_cobro,credito_id,creditos!inner(clientes!inner(id,nombre,semaforo_efectivo))",
+      "id,monto,fecha_cobro,credito_id,creditos!inner(clientes!inner(id,nombre,semaforo_efectivo))",
     )
     .is("pagado_el", null)
     .limit(2000);
@@ -34,6 +35,7 @@ async function traerImpagas(supabase: Awaited<ReturnType<typeof createClient>>) 
   if (error) return { filas: [], error: error.message };
 
   const filas = ((data ?? []) as unknown as CuotaImpagaCruda[]).map((f) => ({
+    id: f.id,
     monto: Number(f.monto),
     fecha_cobro: f.fecha_cobro,
     credito_id: f.credito_id,
@@ -95,6 +97,8 @@ export type FilaCliente = {
   /** Su préstamo más reciente, para poder ir directo a editarlo. */
   creditoId: string | null;
   tieneInteres: boolean;
+  /** La cuota impaga que vence primero. Es la que cobra el buscador de un tap. */
+  cuotaImpagaId: string | null;
 };
 
 export type DatosClientes = { clientes: FilaCliente[]; error: string | null };
@@ -133,8 +137,16 @@ export async function traerClientes(): Promise<DatosClientes> {
   }
 
   const deuda = new Map<string, number>();
+  // La cuota impaga que vence primero de cada persona: es la que abre el
+  // buscador cuando alguien golpea la puerta y paga adelantado. Sin esto, la
+  // única forma de cobrarle a quien no está en "Por pagar" es scrollear.
+  const proximaImpaga = new Map<string, { id: string; fecha_cobro: string }>();
   for (const c of impagasRes.filas) {
     deuda.set(c.cliente_id, (deuda.get(c.cliente_id) ?? 0) + c.monto);
+    const actual = proximaImpaga.get(c.cliente_id);
+    if (!actual || c.fecha_cobro < actual.fecha_cobro) {
+      proximaImpaga.set(c.cliente_id, { id: c.id, fecha_cobro: c.fecha_cobro });
+    }
   }
 
   const docsPorCliente = new Map<string, DocumentoCargado[]>();
@@ -169,6 +181,7 @@ export async function traerClientes(): Promise<DatosClientes> {
       papelesOk: tipo !== null && evaluacion.completa && !evaluacion.hayDesactualizados,
       creditoId: creditoPorCliente.get(id)?.id ?? null,
       tieneInteres: creditoPorCliente.get(id)?.conInteres ?? false,
+      cuotaImpagaId: proximaImpaga.get(id)?.id ?? null,
     };
   });
 

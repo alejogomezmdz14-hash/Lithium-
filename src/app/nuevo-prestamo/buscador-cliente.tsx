@@ -2,20 +2,27 @@
 
 import { useId, useMemo, useRef, useState } from "react";
 
-import { Avatar, ChipSemaforo } from "@/components/semaforo";
+import { Boton } from "@/components/boton";
+import { INPUT } from "@/components/campo";
+import { Semaforo } from "@/components/semaforo";
+import { Escalon, Fila } from "@/components/superficie";
 import { buscar } from "@/lib/buscar";
 import type { TipoCliente } from "@/lib/documentacion";
-import type { Semaforo } from "@/lib/por-pagar";
+import type { Semaforo as EstadoSemaforo } from "@/lib/por-pagar";
 
 export type ClienteElegible = {
   id: string;
   nombre: string;
-  semaforo: Semaforo;
+  semaforo: EstadoSemaforo;
   tipo: TipoCliente | null;
   /** Qué le falta de documentación. Null si no tiene tipo definido. */
   papeles: string | null;
   papelesOk: boolean;
 };
+
+/** El id es fijo y no `useId()`: el botón de crear el préstamo le manda el foco
+ *  cuando falta elegir a quién, y para eso tiene que poder nombrarlo. */
+export const ID_BUSCADOR = "cliente-buscador";
 
 /**
  * Buscador por nombre en lugar de un desplegable. Ver CLAUDE.md §9.11.
@@ -41,7 +48,7 @@ export function BuscadorDeCliente({
   const [consulta, setConsulta] = useState("");
   const [abierto, setAbierto] = useState(false);
   const [resaltado, setResaltado] = useState(0);
-  const idInput = useId();
+  const idLista = useId();
   const contenedor = useRef<HTMLDivElement>(null);
 
   const resultados = useMemo(() => buscar(clientes, consulta).slice(0, 8), [clientes, consulta]);
@@ -71,43 +78,47 @@ export function BuscadorDeCliente({
 
   if (elegido) {
     return (
-      <div className="mt-2 flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5">
-        <Avatar nombre={elegido.nombre} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[0.9375rem] font-semibold text-foreground">{elegido.nombre}</p>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2">
-            <ChipSemaforo estado={elegido.semaforo} />
-            {elegido.papeles ? (
-              <span
-                className={`text-[0.8125rem] font-medium ${
-                  elegido.papelesOk ? "text-muted-foreground" : "text-warning"
-                }`}
-              >
-                {elegido.papeles}
-              </span>
-            ) : null}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => alElegir(null)}
-          disabled={deshabilitado}
-          className="h-12 shrink-0 px-2 text-[0.8125rem] font-semibold text-primary-text"
-        >
-          Cambiar
-        </button>
+      // Una sola fila, un solo dato: quién. El resto de la pantalla es el
+      // préstamo, no la persona.
+      <div className="mt-2.5 overflow-hidden rounded-losa">
+        <Fila>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[1rem] font-semibold tracking-[-0.011em] text-texto">
+              {elegido.nombre}
+            </p>
+            <span className="mt-0.5 flex flex-wrap items-center gap-x-2">
+              <Semaforo estado={elegido.semaforo} />
+              {elegido.papeles ? (
+                <span
+                  className={`text-[0.875rem] font-medium tracking-[-0.006em] ${
+                    elegido.papelesOk ? "text-texto-suave" : "text-atencion"
+                  }`}
+                >
+                  {elegido.papeles}
+                </span>
+              ) : null}
+            </span>
+          </div>
+          <Boton peso="texto" type="button" onClick={() => alElegir(null)} className="shrink-0">
+            Cambiar
+          </Boton>
+        </Fila>
       </div>
     );
   }
 
   return (
-    <div ref={contenedor} className="relative mt-2">
+    <div ref={contenedor} className="relative mt-2.5">
       <input
-        id={idInput}
+        id={ID_BUSCADOR}
         type="text"
         role="combobox"
+        aria-label="Nombre del cliente"
         aria-expanded={abierto}
-        aria-controls={`${idInput}-lista`}
+        aria-controls={idLista}
+        aria-activedescendant={
+          abierto && resultados[resaltado] ? `${idLista}-${resaltado}` : undefined
+        }
         aria-autocomplete="list"
         autoComplete="off"
         autoCapitalize="words"
@@ -125,50 +136,68 @@ export function BuscadorDeCliente({
         // de que el click llegue a registrarse.
         onBlur={() => setTimeout(() => setAbierto(false), 150)}
         onKeyDown={alTeclado}
-        className="h-12 w-full rounded-lg border border-border bg-background px-4 text-base text-foreground placeholder:text-muted-subtle"
+        className={INPUT}
       />
 
       {abierto ? (
-        <ul
-          id={`${idInput}-lista`}
+        // Losa flotante: el radio va en las esquinas exteriores y adentro las
+        // filas se separan por la junta de 2px, donde asoma el canvas de la
+        // página que está atrás. No es una lista de tarjetas.
+        <div
+          id={idLista}
           role="listbox"
-          className="absolute inset-x-0 top-full z-20 mt-1 max-h-80 overflow-y-auto rounded-xl border border-border bg-surface-raised py-1"
+          aria-label="Resultados"
+          className="absolute inset-x-0 top-full z-30 mt-2 flex max-h-80 flex-col gap-[var(--junta)] overflow-y-auto rounded-losa"
         >
           {resultados.length === 0 ? (
-            <li className="px-4 py-3 text-[0.8125rem] font-medium text-muted-foreground">
-              No hay nadie con “{consulta}”.
-            </li>
+            <Fila>
+              <p className="text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
+                No hay nadie con “{consulta}”.
+              </p>
+            </Fila>
           ) : (
-            resultados.map((c, i) => (
-              <li key={c.id} role="option" aria-selected={i === resaltado}>
-                <button
-                  type="button"
+            resultados.map((c, i) => {
+              const contenido = (
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[1rem] font-semibold tracking-[-0.011em] text-texto">
+                    {c.nombre}
+                  </p>
+                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2">
+                    <Semaforo estado={c.semaforo} />
+                    {c.papeles && !c.papelesOk ? (
+                      <span className="text-[0.875rem] font-medium tracking-[-0.006em] text-atencion">
+                        {c.papeles}
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
+              );
+
+              return (
+                <div
+                  key={c.id}
+                  id={`${idLista}-${i}`}
+                  role="option"
+                  aria-selected={i === resaltado}
+                  // `mousedown` sin default: el blur del input llegaría antes que
+                  // el click y cerraría la lista debajo del dedo.
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => elegir(c)}
                   onMouseEnter={() => setResaltado(i)}
-                  className={`flex w-full items-center gap-3 px-3 py-2.5 text-left ${
-                    i === resaltado ? "bg-card" : ""
-                  }`}
                 >
-                  <Avatar nombre={c.nombre} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[0.9375rem] font-semibold text-foreground">
-                      {c.nombre}
-                    </span>
-                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2">
-                      <ChipSemaforo estado={c.semaforo} />
-                      {c.papeles && !c.papelesOk ? (
-                        <span className="text-[0.8125rem] font-medium text-warning">
-                          {c.papeles}
-                        </span>
-                      ) : null}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            ))
+                  {/* La resaltada —la que se elige con Enter— es el ESCALÓN: el
+                      mismo material que en toda la app dice "actuá acá". No hace
+                      falta un color nuevo ni un borde para señalar cuál es. */}
+                  {i === resaltado ? (
+                    <Escalon>{contenido}</Escalon>
+                  ) : (
+                    <Fila>{contenido}</Fila>
+                  )}
+                </div>
+              );
+            })
           )}
-        </ul>
+        </div>
       ) : null}
     </div>
   );

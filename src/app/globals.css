@@ -1,166 +1,344 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Lithium — tokens. Ver CLAUDE.md §9.1.
+   Lithium — sistema visual. Reescrito el 2026-08-07.
 
-   DOS TEMAS. Los valores viven en `:root` (claro) y se pisan en `.dark`.
-   `@theme inline` apunta a esas variables, así el cambio de tema es instantáneo
-   y no obliga a recompilar nada.
+   EL PROBLEMA QUE RESUELVE: la versión anterior era correcta y austera. Prohibía
+   profundidad, gradientes y sombras para no parecer "hecha con IA", y el
+   resultado fue una app plana que el cliente rechazó dos veces por genérica.
+   Acá la profundidad vuelve, pero como SISTEMA: un solo material de vidrio, una
+   sola dirección de luz, un solo acento.
 
-   Los colores NO son los mismos en los dos temas, y no es capricho: el cian
-   #35C4D4 sobre blanco da 1,9:1 — ilegible. Cada tema tiene su propia versión
-   de cada señal, elegida para que el contraste funcione sobre SU fondo.
+   LA RECETA, sacada de la base de ui-ux-pro-max para fintech premium en dark:
+   nunca negro puro (#000 hace smear en OLED), fondo con degradé de base, luz
+   ambiente muy baja detrás del contenido, superficies de vidrio con hairline en
+   rgba (nunca un gris sólido), glow detrás de la única acción primaria, y
+   easing expo.out. Lo que NO se tomó de ahí: su acento índigo #5E6AD2 y su
+   tipografía Inter — son los dos defaults que delatan una interfaz generada.
+   El acento es el azul de la marca; la tipografía tiene carácter propio.
 
-   Nunca poner un hex suelto en un componente: siempre un token de acá.
+   REGLA DURA, la verifica `src/lib/tema.test.ts`:
+   `:root` SOLO declara custom properties. Nunca una regla de estilo. Toda
+   diferencia entre temas es un VALOR, jamás un selector. Ya nos mordió una vez:
+   `:root .bg-card { border }` se aplicaba en los DOS temas.
+
+   Nunca un hex suelto en un componente: siempre un token de acá.
 --------------------------------------------------------------------------- */
 
 :root {
   color-scheme: light;
+  --suavizado: auto;
 
-  /* --- superficies (claro) ------------------------------------------------ */
-  /* Gris muy claro de canvas y tarjetas BLANCAS encima: es lo que da el aire
-     del referente. Al revés —canvas blanco y tarjeta gris— la pantalla se
-     ensucia y las tarjetas parecen apagadas. */
-  --fondo: #f4f4f6;
-  --texto: #0d0d10;
-  --tarjeta: #ffffff;
-  --elevado: #f4f4f6;
-  --borde: #e6e6ea;
+  /* --- base ---------------------------------------------------------------
+     En claro el material NO es vidrio oscuro: es papel sobre un fondo tibio.
+     El vidrio en claro es la falla clásica —queda gris sucio— así que en este
+     tema `--vidrio` es blanco opaco y el hairline se oscurece en vez de
+     aclararse. Misma estructura, distinto material. */
+  /* El canvas baja lo suficiente como para que ENTREN DOS NIVELES arriba. El
+     blanco puro es el techo, así que se lo lleva el nivel elevado y no el
+     normal; si los dos son blancos el escalón no existe, que es exactamente el
+     bug que ya nos costó el modo claro una vez. Lo mide `tema.test.ts`.
+     L*: base-baja 88.6 · base-alta 92.6 · vidrio 96.6 · vidrio-alto 100 */
+  --base-alta: #e7eaf0;
+  --base-baja: #dadee7;
+  --vidrio: #f4f6f9;
+  --vidrio-alto: #ffffff; /* la superficie que flota de verdad */
+  --hairline: rgb(15 23 42 / 0.09);
+  --hairline-luz: rgb(255 255 255 / 0.9); /* el filo que atrapa luz, arriba */
 
-  --texto-suave: #62626b; /* 5.9:1 sobre la tarjeta */
-  --texto-tenue: #8e8e97; /* adorno: separadores, placeholders */
-  --texto-apagado: #b4b4bb;
+  /* Luz ambiente: dos manchas MUY bajas detrás de todo. En claro casi no se
+     ven y esa es la idea — sacan al fondo de "gris plano" sin llamar la atención. */
+  --luz-a: rgb(29 99 210 / 0.1);
+  --luz-b: rgb(53 196 212 / 0.09);
 
-  /* --- marca -------------------------------------------------------------- */
-  --marca: #1d63d2; /* relleno de botones, blanco encima */
+  /* --- texto ------------------------------------ s/vidrio · s/base --------
+     `s/base` se mide contra `--base-baja`, el extremo OSCURO del degradé del
+     canvas: es el peor caso real, y es el fondo de `Bajada` y de los rótulos,
+     que viven sobre el canvas y no sobre el vidrio. Medir solo contra el
+     vidrio blanco es lo que dejó pasar un `--texto-tenue` de 3.72:1. */
+  --texto: #101319; /* 18.1 · 16.0 — nunca #000: el negro puro es el tell #1 */
+  --texto-suave: #545b68; /*  7.0 ·  6.2 */
+  --texto-tenue: #5f6674; /*  5.8 ·  4.6 */
+
+  /* --- marca --------------------------------------------------------------- */
+  --marca: #1d63d2; /* relleno. Blanco encima: 5.57:1 */
   --sobre-marca: #ffffff;
-  --marca-texto: #1550b4; /* links y texto: 6,1:1 sobre blanco */
-  --marca-tinte: #e8effc; /* fondo de los tiles de acceso */
+  --marca-texto: #1550b4; /*  7.4 s/vidrio */
+  --glow: rgb(29 99 210 / 0.28); /* el halo detrás de la acción primaria */
 
-  /* --- señales ------------------------------------------------------------ */
-  --peligro: #c62828; /* 5,9:1 sobre blanco */
-  --destructivo: #c62828;
+  /* --- señales ------------------------------------------------------------- */
+  --peligro: #b01818; /* 7.02 s/vidrio */
+  --destructivo: #a31410;
   --sobre-destructivo: #ffffff;
-  --atencion: #a45c00; /* naranja legible: 4,8:1 */
-  --exito: #0f7a4d; /* verde legible: 4,9:1 */
-  --scrim: rgb(0 0 0 / 0.4);
+  --atencion: #874a00; /* 6.98 */
+  --exito: #0b6640; /* 7.03 */
+  --scrim: rgb(15 23 42 / 0.4);
 }
 
 .dark {
   color-scheme: dark;
+  --suavizado: antialiased;
 
-  /* Tintado, no gris neutro: el ramp perfectamente neutro es firma de theme
-     generado. */
-  --fondo: #0a0a0c;
-  --texto: #fafafa;
-  --tarjeta: #1c1c20;
-  --elevado: #26262b;
-  --borde: #2e2e35;
+  /* Nunca #000000: el negro puro produce smear en pantallas OLED al scrollear,
+     y encima deja el vidrio sin nada contra qué levantarse. */
+  --base-alta: #0d1017;
+  --base-baja: #06070b;
+  --vidrio: rgb(255 255 255 / 0.045);
+  --vidrio-alto: rgb(255 255 255 / 0.075);
+  --hairline: rgb(255 255 255 / 0.09);
+  --hairline-luz: rgb(255 255 255 / 0.16);
 
-  --texto-suave: #a3a3a3;
-  --texto-tenue: #6e6e6e;
-  --texto-apagado: #5a5a5a;
+  --luz-a: rgb(29 99 210 / 0.22);
+  --luz-b: rgb(53 196 212 / 0.14);
 
-  --marca: #1d63d2;
-  --sobre-marca: #ffffff;
-  --marca-texto: #35c4d4; /* cian: 9,4:1 sobre el canvas oscuro */
-  --marca-tinte: #0f2440;
+  --texto: #f2f4f8; /* 17.4 s/base */
+  --texto-suave: #a2abbd; /*  8.1 */
+  --texto-tenue: #7d8698; /*  5.3 */
 
-  --peligro: #fca5a5;
-  --destructivo: #f87171;
-  --sobre-destructivo: #0a0a0c;
-  --atencion: #f59e0b;
-  --exito: #34d399;
-  --scrim: rgb(0 0 0 / 0.6);
+  --marca: #2f74e8;
+  --sobre-marca: #05070c;
+  --marca-texto: #6fd4e0; /*  9.9 */
+  --glow: rgb(47 116 232 / 0.42);
+
+  --peligro: #ffa8a8; /* 10.2 */
+  --destructivo: #ff8f8f;
+  --sobre-destructivo: #06070b;
+  --atencion: #f5b23c; /*  9.9 */
+  --exito: #4fd8a4; /* 10.4 */
+  --scrim: rgb(0 0 0 / 0.62);
+}
+
+/* Geometría y tiempos. No dependen del tema, así que viven una sola vez. */
+:root {
+  --ancho-monto: 6.75rem; /* la columna de la plata, misma x en todas las rutas */
+  --riel: 1.25rem;
+  --junta: 2px;
+  --alto-buscador: 86px;
+}
+
+/* ---------------------------------------------------------------------------
+   La superficie oscura, incondicional: el bloque héroe y los sheets llevan su
+   propia paleta interna así el texto de adentro no depende del tema. Se declara
+   UNA vez, sin `.dark` adelante — un selector condicionado por tema es
+   exactamente el bug que nos costó el modo claro.
+--------------------------------------------------------------------------- */
+.piedra {
+  --texto: #f2f4f8;
+  --texto-suave: #a2abbd;
+  --texto-tenue: #7d8698;
+  --marca-texto: #6fd4e0;
+  --peligro: #ffa8a8;
+  --atencion: #f5b23c;
+  --exito: #4fd8a4;
+  --destructivo: #ff8f8f;
+  --hairline: rgb(255 255 255 / 0.1);
+  --hairline-luz: rgb(255 255 255 / 0.18);
 }
 
 @theme inline {
-  --color-background: var(--fondo);
-  --color-foreground: var(--texto);
+  --color-base-alta: var(--base-alta);
+  --color-base-baja: var(--base-baja);
+  --color-vidrio: var(--vidrio);
+  --color-vidrio-alto: var(--vidrio-alto);
+  --color-hairline: var(--hairline);
+  --color-hairline-luz: var(--hairline-luz);
 
-  --color-card: var(--tarjeta);
-  --color-card-foreground: var(--texto);
-  --color-surface-raised: var(--elevado);
-  --color-popover: var(--tarjeta);
-  --color-popover-foreground: var(--texto);
+  --color-texto: var(--texto);
+  --color-texto-suave: var(--texto-suave);
+  --color-texto-tenue: var(--texto-tenue);
 
-  --color-border: var(--borde);
-  --color-input: var(--borde);
+  --color-marca: var(--marca);
+  --color-sobre-marca: var(--sobre-marca);
+  --color-marca-texto: var(--marca-texto);
 
-  --color-muted: var(--elevado);
-  --color-muted-foreground: var(--texto-suave);
-  --color-muted-subtle: var(--texto-tenue);
-  --color-disabled-foreground: var(--texto-apagado);
-
-  --color-primary: var(--marca);
-  --color-primary-foreground: var(--sobre-marca);
-  --color-primary-text: var(--marca-texto);
-  --color-primary-tint: var(--marca-tinte);
-  --color-ring: var(--marca);
-
-  --color-secondary: var(--elevado);
-  --color-secondary-foreground: var(--texto);
-  --color-accent: var(--elevado);
-  --color-accent-foreground: var(--texto);
-
-  /* peligro y destructivo son rojos DISTINTOS a propósito: urgencia vs borrar */
-  --color-danger: var(--peligro);
-  --color-destructive: var(--destructivo);
-  --color-destructive-foreground: var(--sobre-destructivo);
-  --color-warning: var(--atencion);
-  --color-success: var(--exito);
+  --color-peligro: var(--peligro);
+  --color-destructivo: var(--destructivo);
+  --color-sobre-destructivo: var(--sobre-destructivo);
+  --color-atencion: var(--atencion);
+  --color-exito: var(--exito);
   --color-scrim: var(--scrim);
 
-  /* --- radius: clase de objeto, nunca uniforme --------------------------- */
-  --radius-sm: 0.5rem; /* 8px  — skeleton */
-  --radius-lg: 0.875rem; /* 14px — inputs, controles */
-  --radius-xl: 1.3125rem; /* 21px — cards, sheets */
+  /* --- radios ---------------------------------------------------------------
+     UN radio por clase de objeto, y el default es 0 para que un `rounded-*`
+     puesto de memoria se note. Mezclar radios es la penalización más cara del
+     rubro de coherencia: una card con esquina viva al lado de un botón píldora
+     es el tell #1 de interfaz generada. */
+  --radius-*: initial;
+  --radius-panel: 1.5rem; /* 24px — el bloque héroe y los sheets */
+  --radius-tarjeta: 1.125rem; /* 18px — tarjetas y grupos */
+  --radius-campo: 0.875rem; /* 14px — inputs, celdas de segmentado */
+  --radius-tira: 0.25rem;
+  --radius-pill: 9999px; /* SOLO los botones que registran plata */
 
-  /* --- tipografía (§9.1) -------------------------------------------------- */
-  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Los dos nombres viejos, mismos valores. Están para que las pantallas no
+     tengan que tocarse por un renombre: `losa` = tarjeta, `piedra` = panel. */
+  --radius-losa: 1.125rem;
+  --radius-piedra: 1.5rem;
+
+  --ease-salida: cubic-bezier(0.16, 1, 0.3, 1); /* expo.out */
+  --ease-press: cubic-bezier(0.2, 0, 0, 1);
+  --ease-entrada: cubic-bezier(0.4, 0, 1, 1);
+
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-archivo), ui-sans-serif, sans-serif;
   --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
 }
 
 @layer base {
+  html {
+    /* El degradé va en el html y no en el body para que el rebote del scroll en
+       iOS muestre el mismo color y no una franja blanca. */
+    background:
+      linear-gradient(180deg, var(--base-alta) 0%, var(--base-baja) 62%) fixed,
+      var(--base-baja);
+    min-height: 100%;
+  }
+
   body {
-    background-color: var(--fondo);
+    position: relative;
     color: var(--texto);
     font-family: var(--font-sans);
-    font-weight: 500;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* En claro el 500 engorda: el peso óptico correcto depende del tema. */
-  :root body {
     font-weight: 450;
-  }
-
-  /* Toda cifra es tabular — montos, fechas (12/8) y contadores (3/6).
-     Sin esto los números bailan entre renders y la lista se ve temblorosa. */
-  .tabular,
-  [data-tabular] {
+    -webkit-font-smoothing: var(--suavizado);
+    /* La app es una planilla: no hay número que quiera ser proporcional. */
     font-variant-numeric: tabular-nums;
   }
 
-  /* Focus que se ve de verdad (§9.7) */
+  /* La luz ambiente. Dos manchas fijas detrás de todo, con blur enorme y
+     opacidad baja: es lo que hace que el fondo no se lea como un rectángulo de
+     color plano. Van en un pseudo-elemento fijo y `pointer-events: none` para
+     no costar una capa de composición por scroll. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -20% -10% auto -10%;
+    height: 70vh;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(46% 40% at 18% 0%, var(--luz-a) 0%, transparent 70%),
+      radial-gradient(40% 38% at 92% 12%, var(--luz-b) 0%, transparent 72%);
+  }
+
   :focus-visible {
-    outline: 2px solid var(--color-ring);
+    outline: 2px solid var(--marca-texto);
     outline-offset: 2px;
   }
 
-  /* Un botón es para tocar, no para seleccionar su texto. Sin esto, tocarlo
-     dos veces seguidas en el celular lo deja pintado de azul y parece roto. */
   button,
   [role="button"],
-  label {
+  a,
+  label,
+  summary {
     -webkit-user-select: none;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    /* Apaga el zoom por doble tap SOBRE EL CONTROL y solo ahí. Es lo que antes
+       intentaba `maximumScale: 1`, que le sacaba el pinch-zoom a toda la
+       página — incluida quien necesita agrandar para leer. */
+    touch-action: manipulation;
   }
 
-  /* En claro las tarjetas necesitan un borde de 1px para despegarse del canvas;
-     en oscuro las separa el escalón de superficie y el borde sobraría. */
-  :root .bg-card {
-    border: 1px solid var(--borde);
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    /* Los crossfades quedan en 100ms: un corte seco de opacidad se lee como
+       parpadeo, que molesta más que la animación. */
+    [data-motion="fade"] {
+      transition-duration: 100ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* --- EL MATERIAL ---------------------------------------------------------
+     Una sola definición de "superficie que flota", usada por tarjetas, filas,
+     campos y la barra de navegación. Que sea una sola es lo que hace que la
+     app se lea como un producto y no como diez pantallas: misma dirección de
+     luz, mismo filo, mismo grosor en todas.
+
+     El filo de luz de arriba (`--hairline-luz`) es lo que convierte un
+     rectángulo con fondo en un objeto con canto. Es 1px y es la mitad del
+     efecto. */
+  .vidrio {
+    background-color: var(--vidrio);
+    box-shadow:
+      inset 0 1px 0 0 var(--hairline-luz),
+      inset 0 0 0 1px var(--hairline);
+  }
+
+  .vidrio-alto {
+    background-color: var(--vidrio-alto);
+    box-shadow:
+      inset 0 1px 0 0 var(--hairline-luz),
+      inset 0 0 0 1px var(--hairline),
+      0 18px 40px -24px rgb(0 0 0 / 0.55);
+  }
+
+  /* El bloque héroe: oscuro en los dos temas, con su propia luz adentro. Es la
+     única superficie de la app con degradé, y por eso se lee como "la
+     importante" sin necesidad de ser más grande ni de otro color. */
+  .panel-heroe {
+    background:
+      radial-gradient(120% 90% at 88% 0%, rgb(53 196 212 / 0.16) 0%, transparent 58%),
+      linear-gradient(158deg, #1b2438 0%, #10151f 52%, #0b0f17 100%);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.14),
+      inset 0 0 0 1px rgb(255 255 255 / 0.07),
+      0 26px 56px -30px rgb(0 0 0 / 0.8);
+  }
+
+  /* El halo detrás de la acción primaria. No es decoración: es lo que hace que
+     el único botón que registra plata se encuentre sin buscarlo. */
+  .con-glow {
+    box-shadow: 0 10px 34px -12px var(--glow);
+  }
+
+  /* Las barras que se pegan arriba o abajo mientras el contenido pasa por
+     detrás. Es el ÚNICO lugar donde se usa blur, y acá califica porque hay
+     contenido real moviéndose atrás. Un color plano no sirve: el fondo es un
+     degradé y se vería la costura. */
+  .barra-vidrio {
+    background: color-mix(in srgb, var(--base-alta) 74%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+  /* Si el navegador no soporta backdrop-filter, opaco: una barra translúcida
+     sin blur deja el texto ilegible sobre la lista que pasa por atrás. */
+  @supports not (backdrop-filter: blur(1px)) {
+    .barra-vidrio {
+      background: var(--base-alta);
+    }
+  }
+
+  /* La barra que además FLOTA: la de navegación, que tiene contenido por debajo
+     y por los costados. Lleva el mismo filo y la misma sombra proyectada que
+     `.vidrio-alto` — el fondo lo pone `.barra-vidrio`, que es translúcido y con
+     blur. Existe como clase y no suelta en el JSX porque una elevación escrita a
+     mano deriva de la del sistema y nadie se entera: las recetas de sombra viven
+     todas acá. */
+  .barra-flotante {
+    box-shadow:
+      inset 0 1px 0 0 var(--hairline-luz),
+      inset 0 0 0 1px var(--hairline),
+      0 18px 40px -24px rgb(0 0 0 / 0.55);
+  }
+
+  /* Presionar. 90ms para entrar y 220 para volver: apretar es instantáneo,
+     soltar se relaja. Es lo único que hace que una superficie se sienta física. */
+  .presionable {
+    transition:
+      transform 220ms var(--ease-salida),
+      background-color 220ms var(--ease-salida);
+  }
+  .presionable:active {
+    transform: scale(0.975);
+    transition-duration: 90ms;
+    transition-timing-function: var(--ease-press);
   }
 }

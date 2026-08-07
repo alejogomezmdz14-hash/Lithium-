@@ -31,6 +31,8 @@ export async function cobrar(_previo: EstadoCobro, datos: FormData): Promise<Est
   const cuando = String(datos.get("cuando") ?? "hoy");
   const otroDia = String(datos.get("otro_dia") ?? "");
   const fechaResto = String(datos.get("fecha_resto") ?? "");
+  const nombre = String(datos.get("nombre") ?? "");
+  const numero = String(datos.get("numero") ?? "");
 
   if (!cuotaId) return { error: "Faltó la cuota. Volvé y probá de nuevo." };
   if (monto === null || monto <= 0) return { error: "Escribí cuánto te dio." };
@@ -59,6 +61,15 @@ export async function cobrar(_previo: EstadoCobro, datos: FormData): Promise<Est
     return { error: error.message };
   }
 
-  revalidatePath("/");
-  redirect("/");
+  // Todo el árbol: el cobro cambia "Por pagar", el Resumen, el semáforo del
+  // cliente y el detalle del préstamo a la vez. Revalidar solo "/" dejaba la
+  // lista de cobros mostrando la cuota que se acaba de cerrar.
+  revalidatePath("/", "layout");
+
+  // El toast de "Deshacer" no puede vivir acá: este componente se desmonta en
+  // la navegación y el aviso duraría 200ms. Viaja por la URL y lo levanta un
+  // client component montado en el layout del shell, que dura 8 segundos —
+  // está parada en la calle, mirando a alguien a los ojos.
+  const params = new URLSearchParams({ cobre: nombre, cuota: numero, deshacer: cuotaId });
+  redirect(`/por-pagar?${params.toString()}`);
 }

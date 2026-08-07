@@ -1,18 +1,23 @@
 import Link from "next/link";
 
-import { Avatar, ChipSemaforo } from "@/components/semaforo";
-import { formatARS } from "@/lib/money";
-import { PALABRA_SEMAFORO, type Semaforo } from "@/lib/por-pagar";
+import { Aviso } from "@/components/aviso";
+import { BotonLink } from "@/components/boton";
+import { Buscador, type PersonaBuscable } from "@/components/buscador";
+import { ColumnaMonto, Monto } from "@/components/monto";
+import { Bajada, Rotulo } from "@/components/rotulo";
+import { Semaforo } from "@/components/semaforo";
+import { Fila, FilaLectura, Losa } from "@/components/superficie";
+import { PALABRA_SEMAFORO, type Semaforo as EstadoSemaforo } from "@/lib/por-pagar";
 import { traerClientes, type FilaCliente } from "@/lib/queries";
 
 export const metadata = { title: "Clientes — Lithium" };
 
 /**
  * Secciones por semáforo, peor primero. Agrupar en vez de una lista plana es lo
- * que hace que la pregunta "¿a quién le presto?" se conteste de un barrido:
- * el grupo ya dice la respuesta, la fila solo dice quién.
+ * que hace que la pregunta "¿a quién le presto?" se conteste de un barrido: el
+ * rótulo ya dice la respuesta y la fila solo dice quién.
  */
-const SECCIONES: { estado: Semaforo; bajada: string }[] = [
+const SECCIONES: { estado: EstadoSemaforo; bajada: string }[] = [
   { estado: "rojo", bajada: "Te deben plata vencida" },
   { estado: "naranja", bajada: "Te pagan, pero tarde o de a poco" },
   { estado: "nuevo", bajada: "Todavía no te pagaron nada" },
@@ -22,174 +27,151 @@ const SECCIONES: { estado: Semaforo; bajada: string }[] = [
 export default async function ClientesPage() {
   const { clientes, error } = await traerClientes();
 
-  const porEstado = new Map<Semaforo, FilaCliente[]>();
+  const porEstado = new Map<EstadoSemaforo, FilaCliente[]>();
   for (const cliente of clientes) {
     const lista = porEstado.get(cliente.semaforo) ?? [];
     lista.push(cliente);
     porEstado.set(cliente.semaforo, lista);
   }
 
+  // Las secciones vacías no se renderizan, así que "la última losa" —donde va
+  // `Cliente nuevo`— hay que saber cuál es antes de empezar a dibujar.
+  const secciones = SECCIONES.filter(({ estado }) => (porEstado.get(estado)?.length ?? 0) > 0);
   const totalDeuda = clientes.reduce((suma, c) => suma + c.debe, 0);
 
+  const personas: PersonaBuscable[] = clientes.map((c) => ({
+    id: c.id,
+    nombre: c.nombre,
+    semaforo: c.semaforo,
+    debe: c.debe,
+    cuotaImpagaId: c.cuotaImpagaId,
+  }));
+
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-[1.0625rem] font-semibold tracking-[-0.01em] text-foreground">
-            Clientes
-          </h1>
-          <p className="mt-1 text-[0.8125rem] font-medium text-muted-foreground">
-            ¿A quién le puedo prestar de nuevo?
-          </p>
-        </div>
-        <Link
-          href="/nuevo-cliente"
-          className="flex h-12 shrink-0 items-center rounded-full bg-primary px-4 text-[0.8125rem] font-semibold text-primary-foreground"
-        >
-          Nuevo
-        </Link>
-      </div>
+    <main className="mx-auto w-full max-w-[520px] px-4 pb-28 pt-3">
+      <Buscador personas={personas}>
+        {/* Las tres pantallas de datos dicen el error con la misma cara y las
+            mismas palabras: lo primero que necesita saber es que la plata está
+            guardada. */}
+        {error ? (
+          <div className="mt-2.5">
+            <Aviso tono="error" titulo="No se pudieron traer los clientes">
+              {error} Lo que ya cobraste está guardado. Esto es solo la pantalla, no tus datos.
+            </Aviso>
+          </div>
+        ) : clientes.length === 0 ? (
+          <div className="mt-2.5">
+            <Aviso
+              tono="calma"
+              titulo="Todavía no cargaste a nadie."
+              acciones={
+                <BotonLink peso="texto" href="/nuevo-cliente">
+                  Cargar el primero
+                </BotonLink>
+              }
+            >
+              Empezá por la persona a la que le vas a prestar.
+            </Aviso>
+          </div>
+        ) : (
+          <>
+            <Losa className="mt-2.5">
+              <FilaLectura>
+                <span className="text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
+                  {clientes.length === 1 ? "1 cliente" : `${clientes.length} clientes`}
+                </span>
+                <span className="flex items-baseline gap-2">
+                  <span className="text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
+                    en la calle
+                  </span>
+                  <ColumnaMonto>
+                    <Monto
+                      valor={totalDeuda}
+                      className="font-mono text-[0.95rem] font-normal tracking-[-0.01em] text-texto"
+                    />
+                  </ColumnaMonto>
+                </span>
+              </FilaLectura>
+            </Losa>
 
-      {clientes.length > 0 ? (
-        <div className="mt-5 flex items-baseline justify-between gap-3 rounded-xl bg-card px-4 py-3.5">
-          <span className="text-[0.8125rem] font-medium text-muted-foreground">
-            {clientes.length === 1 ? "1 cliente" : `${clientes.length} clientes`}
-          </span>
-          <span className="font-mono text-[0.875rem] font-medium tabular-nums text-foreground">
-            {formatARS(totalDeuda)} en la calle
-          </span>
-        </div>
-      ) : null}
+            {secciones.map(({ estado, bajada }, i) => {
+              const grupo = porEstado.get(estado)!;
+              const esLaUltima = i === secciones.length - 1;
 
-      {error ? (
-        <p className="mt-6 rounded-xl bg-card p-5 text-[0.8125rem] font-medium text-danger">
-          No se pudieron traer los clientes: {error}
-        </p>
-      ) : clientes.length === 0 ? (
-        <div className="mt-6 rounded-xl bg-card p-5">
-          <p className="text-[0.9375rem] font-semibold text-foreground">Todavía no cargaste a nadie.</p>
-          <p className="mt-1 text-[0.8125rem] font-medium text-muted-foreground">
-            Empezá por la persona a la que le vas a prestar.
-          </p>
-          <Link
-            href="/nuevo-cliente"
-            className="mt-4 inline-flex h-12 items-center rounded-full bg-primary px-5 text-[0.8125rem] font-semibold text-primary-foreground"
-          >
-            Cargar el primero
-          </Link>
-        </div>
-      ) : (
-        <div className="mt-7 flex flex-col gap-7">
-          {SECCIONES.map(({ estado, bajada }) => {
-            const grupo = porEstado.get(estado);
-            // Las secciones vacías no se renderizan.
-            if (!grupo || grupo.length === 0) return null;
+              return (
+                <section key={estado} className="mt-8">
+                  <Rotulo>
+                    {PALABRA_SEMAFORO[estado]} · {grupo.length}
+                  </Rotulo>
+                  <Bajada>{bajada}</Bajada>
 
-            return (
-              <section key={estado}>
-                <h2 className="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  {PALABRA_SEMAFORO[estado]} · {grupo.length}
-                </h2>
-                <p className="mt-0.5 text-[0.8125rem] font-medium text-muted-subtle">{bajada}</p>
-
-                <ul className="mt-2 flex flex-col gap-2">
-                  {grupo.map((cliente) => (
-                    <li key={cliente.id} className="overflow-hidden rounded-xl">
-                      <Link
-                        href={`/clientes/${cliente.id}`}
-                        className="flex items-center gap-3 bg-card px-4 py-3.5"
-                      >
-                        <Avatar nombre={cliente.nombre} />
-
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[0.9375rem] font-semibold tracking-[-0.006em] text-foreground">
+                  <Losa className="mt-2.5">
+                    {grupo.map((cliente) => (
+                      <Fila key={cliente.id}>
+                        {/* Un solo destino por persona: la ficha. El `before`
+                            estira el área tocable del nombre sobre toda la fila,
+                            así el monto también lleva ahí y no hay una segunda
+                            zona con otro comportamiento según dónde cae el pulgar. */}
+                        <Link
+                          href={`/clientes/${cliente.id}`}
+                          className="min-w-0 flex-1 before:absolute before:inset-0"
+                        >
+                          <span className="block truncate text-[1rem] font-semibold tracking-[-0.011em] text-texto">
                             {cliente.nombre}
-                          </p>
-                          <p className="mt-0.5">
-                            {/* Dentro de la sección la palabra ya la dice el header,
-                                así que acá va solo el punto — salvo que el color lo
-                                haya puesto ella a mano, que sí es información nueva. */}
-                            <ChipSemaforo
+                          </span>
+                          <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                            {/* Dentro de la sección la palabra ya la dice el
+                                rótulo: acá va solo el punto. Salvo que el color
+                                lo haya puesto ella a mano, que sí es información
+                                nueva y entonces se escribe. */}
+                            <Semaforo
                               estado={cliente.semaforo}
                               esManual={cliente.esManual}
                               soloPunto={!cliente.esManual}
                             />
-                            {!cliente.esManual && cliente.telefono ? (
-                              <span className="text-[0.8125rem] font-medium text-muted-foreground">
-                                {cliente.telefono}
+                            {/* Los papeles aparecen SOLO cuando falta algo: lo
+                                que está en regla no necesita decirse. */}
+                            {!cliente.papelesOk ? (
+                              <span className="text-[0.875rem] font-medium tracking-[-0.006em] text-atencion">
+                                {cliente.papeles}
                               </span>
                             ) : null}
-                          </p>
-                        </div>
-
-                        <div className="flex shrink-0 items-center gap-2 text-right">
-                          <div>
-                            {cliente.debe > 0 ? (
-                              <>
-                                <p className="font-mono text-[0.875rem] font-medium tabular-nums text-foreground">
-                                  {formatARS(cliente.debe)}
-                                </p>
-                                <p className="mt-0.5 text-[0.8125rem] font-medium text-muted-foreground">
-                                  te debe
-                                </p>
-                              </>
-                            ) : (
-                              <p className="text-[0.8125rem] font-medium text-muted-foreground">
-                                no te debe
-                              </p>
-                            )}
-                          </div>
-                          {/* Que se vea que la fila se toca. Sin esto nadie
-                              descubre que adentro está la documentación. */}
-                          <span aria-hidden className="text-[1.0625rem] text-muted-subtle">
-                            ›
-                          </span>
-                        </div>
-                      </Link>
-
-                      {/* La documentación sale a la superficie: es el motivo por
-                          el que se entra a la ficha, y enterrada dos niveles
-                          abajo no la encontraba nadie. */}
-                      <Link
-                        href={`/clientes/${cliente.id}`}
-                        className={`mt-px flex items-center justify-between gap-3 px-4 py-3 ${
-                          cliente.papelesOk
-                            ? "bg-card text-muted-foreground"
-                            : "bg-surface-raised text-warning"
-                        }`}
-                      >
-                        <span className="text-[0.8125rem] font-medium">
-                          Papeles: {cliente.papeles}
-                        </span>
-                        <span className="shrink-0 text-[0.8125rem] font-semibold text-primary-text">
-                          {cliente.papelesOk ? "Ver" : "Subir documentos ›"}
-                        </span>
-                      </Link>
-
-                      {/* Atajo al préstamo: es donde se pone el interés y las
-                          fechas, y con la cartera migrada del Excel es lo
-                          primero que hay que hacer con cada uno. */}
-                      {cliente.creditoId ? (
-                        <Link
-                          href={`/prestamo/${cliente.creditoId}`}
-                          className="mt-px flex items-center justify-between gap-3 rounded-b-xl bg-card px-4 py-3"
-                        >
-                          <span className="text-[0.8125rem] font-medium text-muted-foreground">
-                            {cliente.tieneInteres ? "Préstamo" : "Sin interés cargado"}
-                          </span>
-                          <span className="shrink-0 text-[0.8125rem] font-semibold text-primary-text">
-                            {cliente.tieneInteres ? "Ver ›" : "Poner el interés ›"}
                           </span>
                         </Link>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            );
-          })}
-        </div>
-      )}
+
+                        <ColumnaMonto>
+                          {cliente.debe > 0 ? (
+                            <Monto
+                              valor={cliente.debe}
+                              className="font-mono text-[0.95rem] font-medium tracking-[-0.01em] text-texto"
+                            />
+                          ) : (
+                            <span className="text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
+                              no te debe
+                            </span>
+                          )}
+                        </ColumnaMonto>
+                      </Fila>
+                    ))}
+
+                    {/* Última celda de la última losa, no un botón flotando
+                        arriba: cargar a alguien es lo que se hace DESPUÉS de
+                        mirar la lista y no encontrarlo. Sin relleno de marca —
+                        acá no se registra plata, se decide a quién prestarle. */}
+                    {esLaUltima ? (
+                      <FilaLectura className="h-16">
+                        <BotonLink peso="texto" href="/nuevo-cliente">
+                          Cliente nuevo
+                        </BotonLink>
+                      </FilaLectura>
+                    ) : null}
+                  </Losa>
+                </section>
+              );
+            })}
+          </>
+        )}
+      </Buscador>
     </main>
   );
 }

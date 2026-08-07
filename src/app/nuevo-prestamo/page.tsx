@@ -1,5 +1,5 @@
-import Link from "next/link";
-
+import { Aviso } from "@/components/aviso";
+import { BotonLink, Volver } from "@/components/boton";
 import { hoyEnBA } from "@/lib/fecha";
 import { traerClientes } from "@/lib/queries";
 
@@ -11,51 +11,50 @@ export default async function NuevoPrestamoPage() {
   const { clientes, error } = await traerClientes();
 
   return (
-    <main className="mx-auto w-full max-w-md px-5 pb-16 pt-8">
-      <Link
-        href="/"
-        className="inline-flex h-12 items-center text-[0.8125rem] font-semibold text-primary-text"
-      >
-        ‹ Volver
-      </Link>
+    <main className="mx-auto w-full max-w-[520px] px-4 pb-28 pt-3">
+      <Volver href="/">Volver al resumen</Volver>
 
-      <h1 className="mt-2 text-[1.375rem] font-semibold tracking-[-0.01em] text-foreground">
+      <h1 className="mt-2.5 font-display text-[1.375rem] font-bold tracking-[-0.025em] text-texto">
         Nueva deuda
       </h1>
-      <p className="mb-6 mt-1 text-[0.8125rem] font-medium text-muted-foreground">
+      <p className="mt-1 text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
         Cargá cuánto le prestás y cómo te lo devuelve.
       </p>
 
-      {error ? (
-        <p className="rounded-xl bg-card p-5 text-[0.8125rem] font-medium text-danger">{error}</p>
-      ) : clientes.length === 0 ? (
-        <div className="rounded-xl bg-card p-5">
-          <p className="text-[0.9375rem] font-semibold text-foreground">
-            Primero cargá a la persona.
-          </p>
-          <p className="mt-1 text-[0.8125rem] font-medium text-muted-foreground">
-            No se puede prestar a alguien que no está en la lista.
-          </p>
-          <Link
-            href="/nuevo-cliente"
-            className="mt-4 inline-flex h-12 items-center rounded-full bg-primary px-5 text-[0.8125rem] font-semibold text-primary-foreground"
+      <div className="mt-8">
+        {error ? (
+          <Aviso tono="error" titulo="No se pudo traer la lista de clientes">
+            {error}
+          </Aviso>
+        ) : clientes.length === 0 ? (
+          <Aviso
+            tono="calma"
+            titulo="Primero cargá a la persona"
+            // `texto` y no relleno: salir de un aviso hacia otra pantalla es
+            // navegación, y el relleno de marca está reservado al botón que
+            // completa la tarea de la pantalla donde vive.
+            acciones={
+              <BotonLink peso="texto" href="/nuevo-cliente">
+                Cliente nuevo
+              </BotonLink>
+            }
           >
-            Cargar un cliente
-          </Link>
-        </div>
-      ) : (
-        <PrestamoForm
-          clientes={clientes.map((c) => ({
-            id: c.id,
-            nombre: c.nombre,
-            semaforo: c.semaforo,
-            tipo: c.tipo,
-            papeles: c.tipo ? c.papeles : null,
-            papelesOk: c.papelesOk,
-          }))}
-          hoy={hoyEnBA()}
-        />
-      )}
+            No se puede prestar a alguien que no está en la lista.
+          </Aviso>
+        ) : (
+          <PrestamoForm
+            clientes={clientes.map((c) => ({
+              id: c.id,
+              nombre: c.nombre,
+              semaforo: c.semaforo,
+              tipo: c.tipo,
+              papeles: c.tipo ? c.papeles : null,
+              papelesOk: c.papelesOk,
+            }))}
+            hoy={hoyEnBA()}
+          />
+        )}
+      </div>
     </main>
   );
 }

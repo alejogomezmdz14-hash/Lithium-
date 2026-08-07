@@ -27,7 +27,9 @@ export function BotonDeTema() {
         }
       }}
       aria-label="Cambiar entre modo claro y oscuro"
-      className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground"
+      // `rounded-campo` y no una píldora: la píldora está reservada a los cuatro
+      // botones que registran plata, y esto no mueve un peso.
+      className="flex size-12 shrink-0 items-center justify-center rounded-campo text-texto-suave"
     >
       {/* Luna: visible en claro, tocarla lleva a oscuro. */}
       <svg
