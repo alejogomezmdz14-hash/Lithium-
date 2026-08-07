@@ -74,13 +74,17 @@ export default async function ResumenPage() {
           búsqueda queda vacía en vez de romper el resumen, que es lo que ella
           vino a ver. */}
       <Buscador personas={clientes}>
-        {/* El héroe es el CAPITAL, no la deuda — decisión del cliente, 2026-08-07.
-            Y muestra `capitalEnLaCalle`, no `meDeben`: hoy los dos dan lo mismo
-            porque ningún préstamo tiene interés cargado, pero en cuanto se le
-            ponga interés a uno se separan, y un rótulo que dice "capital" sobre
-            un número que incluye interés es exactamente la clase de mentira que
-            hace que deje de creerle a la pantalla. `Me deben` no se pierde: baja
-            a la tabla de números del negocio. */}
+        {/* **Los DOS números de plata, juntos y en el mismo panel** — pedido del
+            cliente, 2026-08-07:
+
+              Capital prestado      lo que salió del bolsillo   (capitalEnLaCalle)
+              Capital con interés   lo que tiene que volver     (meDeben)
+
+            Son dos cuentas distintas, no dos nombres para la misma: hoy dan
+            igual solamente porque ningún préstamo tiene interés cargado todavía.
+            Apenas se le ponga interés a uno, el de arriba se queda quieto y el
+            de abajo sube — y la diferencia entre los dos es exactamente
+            `Interés por cobrar`, que está en la tabla de más abajo. */}
         <Piedra>
           <p className="text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
             Capital prestado
@@ -108,6 +112,22 @@ export default async function ResumenPage() {
               </>
             )}
           </p>
+
+          {/* El total con el interés ya sumado. Va ACÁ ARRIBA y no en la tabla
+              de abajo porque son la misma cuenta leída de dos maneras: lo que
+              pusiste y lo que te tiene que volver.
+
+              A la mitad del tamaño del héroe, a propósito. Dos números de 44px
+              serían dos números sin jerarquía, y ahí ninguno es el importante.
+              El capital manda porque es la plata que salió del bolsillo. */}
+          <div className="mt-5 flex items-baseline justify-between gap-3 border-t border-hairline pt-4">
+            <span className="text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
+              Capital con interés
+            </span>
+            <span className="font-display text-[1.375rem] font-bold tracking-[-0.025em]">
+              <Monto valor={meDeben} />
+            </span>
+          </div>
         </Piedra>
 
         {/* Tres acciones, una losa. No pesan igual: `Nueva deuda` se lleva la
@@ -213,20 +233,11 @@ export default async function ResumenPage() {
             cambia una decisión, no está acá. */}
         <section className="mt-8">
           <Losa>
-            {/* `Me deben` bajó acá desde el héroe cuando el capital pasó a ser
-                el número grande. Es capital + interés, o sea SIEMPRE mayor o
-                igual al héroe, y por eso va justo arriba de `Interés por
-                cobrar`: los tres números se leen como una sola cuenta. */}
-            <FilaLectura>
-              <span className="text-[0.875rem] font-medium text-texto-suave">Me deben</span>
-              <ColumnaMonto>
-                <Monto
-                  valor={meDeben}
-                  className="font-mono text-[0.95rem] font-normal tracking-[-0.01em] text-texto"
-                />
-              </ColumnaMonto>
-            </FilaLectura>
-
+            {/* `Me deben` NO se repite acá: es el mismo número que
+                `Capital con interés` del panel de arriba, y el mismo dato dos
+                veces en la misma pantalla obliga a comparar dos cifras iguales
+                para descubrir que son la misma. Lo que sí queda es de dónde sale
+                la diferencia entre los dos números de arriba: el interés. */}
             <FilaLectura>
               <span className="text-[0.875rem] font-medium text-texto-suave">
                 Interés por cobrar
