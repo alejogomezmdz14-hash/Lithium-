@@ -74,21 +74,28 @@ export default async function ResumenPage() {
           búsqueda queda vacía en vez de romper el resumen, que es lo que ella
           vino a ver. */}
       <Buscador personas={clientes}>
+        {/* El héroe es el CAPITAL, no la deuda — decisión del cliente, 2026-08-07.
+            Y muestra `capitalEnLaCalle`, no `meDeben`: hoy los dos dan lo mismo
+            porque ningún préstamo tiene interés cargado, pero en cuanto se le
+            ponga interés a uno se separan, y un rótulo que dice "capital" sobre
+            un número que incluye interés es exactamente la clase de mentira que
+            hace que deje de creerle a la pantalla. `Me deben` no se pierde: baja
+            a la tabla de números del negocio. */}
         <Piedra>
           <p className="text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
-            Me deben
+            Capital prestado
           </p>
           <p className="mt-2 font-display text-[2.75rem] font-bold leading-[0.98] tracking-[-0.04em]">
-            <Monto valor={meDeben} />
+            <Monto valor={resumen.capitalEnLaCalle} />
           </p>
           <p className="mt-2 text-[0.875rem] font-medium tracking-[-0.006em] text-texto-suave">
-            {meDeben === 0 ? (
-              "Estás al día."
+            {resumen.capitalEnLaCalle === 0 ? (
+              "Todavía no prestaste nada."
             ) : (
               <>
                 {resumen.personasQueDeben === 1
-                  ? "1 persona"
-                  : `${resumen.personasQueDeben} personas`}
+                  ? "en 1 persona"
+                  : `en ${resumen.personasQueDeben} personas`}
                 {vencido.monto > 0 ? (
                   <>
                     {" · "}
@@ -206,13 +213,15 @@ export default async function ResumenPage() {
             cambia una decisión, no está acá. */}
         <section className="mt-8">
           <Losa>
+            {/* `Me deben` bajó acá desde el héroe cuando el capital pasó a ser
+                el número grande. Es capital + interés, o sea SIEMPRE mayor o
+                igual al héroe, y por eso va justo arriba de `Interés por
+                cobrar`: los tres números se leen como una sola cuenta. */}
             <FilaLectura>
-              <span className="text-[0.875rem] font-medium text-texto-suave">
-                Tu capital en la calle
-              </span>
+              <span className="text-[0.875rem] font-medium text-texto-suave">Me deben</span>
               <ColumnaMonto>
                 <Monto
-                  valor={resumen.capitalEnLaCalle}
+                  valor={meDeben}
                   className="font-mono text-[0.95rem] font-normal tracking-[-0.01em] text-texto"
                 />
               </ColumnaMonto>

@@ -260,7 +260,7 @@ Las palabras son lo único que Candela lee de verdad. Esta lista es **normativa*
 | `cuotas` con `cantidad_cuotas = 1` | **el pago** / **un solo pago** | "cuota 1 de 1" |
 | registrar un pago | **Ya me pagó** (botón) · **Listo, la cobré** (confirmar) | Cobrar, Registrar pago, Guardar |
 | deuda viva | **Me deben** | saldo, deuda viva, outstanding |
-| capital | **Puse en la calle** | capital, principal |
+| capital | **Capital prestado** | "Puse en la calle" (era esto hasta el 2026-08-07), principal |
 | `monto_total` | **Tengo que cobrar** | total con interés |
 | `estado = vencido` | **12 días de atraso** | vencido el, overdue |
 | `estado = pagado` | **cobrada el 12/7** | pagada, saldada |
@@ -477,7 +477,9 @@ HOY · 2 personas · $95.000 ─────────────────
 
 Candela es una persona sola, no un equipo de finanzas: **pocos números, grandes, con aire**. Un solo número héroe. Nada de grilla de 4 KPIs. Una piedra arriba y abajo listas:
 
-1. **`Me deben`** — héroe, 44px, dentro de la piedra, con `9 personas · $180.000 vencido` como subtítulo. **Descartado el 2-up asimétrico:** `Me deben` y `Vencido` no son dos tiles, son el número y su subtítulo, y viven en la misma piedra.
+1. **`Capital prestado`** — héroe, 44px, dentro de la piedra, con `en 9 personas · $180.000 vencido` como subtítulo. **Descartado el 2-up asimétrico:** el número y `Vencido` no son dos tiles, son el número y su subtítulo, y viven en la misma piedra.
+
+   **Cambiado el 2026-08-07 a pedido del cliente:** el héroe era `Me deben`. Al cambiar el rótulo también cambió el **número**: muestra `capitalEnLaCalle`, no `meDeben`. Hoy los dos dan lo mismo porque ningún préstamo tiene interés cargado, pero se separan apenas se le ponga interés a uno — y un rótulo que dice "capital" sobre un número que incluye interés es la clase de mentira que hace que Candela deje de creerle a la pantalla. `Me deben` bajó a la tabla de números del negocio, arriba de `Interés por cobrar`.
 2. **`Vencido`** — 22px. **Se cuenta en personas** (`3 personas`), no en créditos: ella cuenta gente.
 3. **`Prestaste en {mes}`** — el capital que salió a la calle **este mes**, y debajo el desglose **`Con interés` / `Sin interés`** más `Vas a ganar de interés`. **Los tres números a la vez, sin toggle**: un pill que hay que acordarse de haber tocado es un código a aprender.
 4. **`Cobrás esta semana`** — es un link a `/por-pagar`.
