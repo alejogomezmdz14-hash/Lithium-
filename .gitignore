@@ -38,6 +38,15 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Skills de diseño instaladas con `npx skills add` / `npx impeccable install`.
+# Son ~6 MB de herramientas para el agente, no código de la app, y se
+# reinstalan en un comando. Lo que SÍ se commitea es skills-lock.json, que fija
+# las versiones exactas: con eso la instalación es reproducible.
+.agents/
+.codex/
+.claude/skills/
+.claude/settings.local.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

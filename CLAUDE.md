@@ -688,7 +688,27 @@ El bucket **`documentos` es PRIVADO**. Adentro van DNI, recibos de sueldo y paga
 | Se completa un paso del roadmap | Sección **8** — marcarlo hecho, no borrarlo |
 | Se **descarta** una idea o enfoque | Anotar qué se descartó **y por qué**, para no reproponerlo en la próxima sesión |
 
-**Cuidado al correr generadores** (`create-next-app`, `shadcn init`): generan su propio `CLAUDE.md` / `AGENTS.md` y **pisan este archivo**. Ya pasó una vez. Antes de un generador que escriba en la raíz, copiar `CLAUDE.md` a un lado y restaurarlo después.
+**Cuidado al correr generadores** (`create-next-app`, `shadcn init`, `impeccable install`): generan su propio `CLAUDE.md` / `AGENTS.md` y **pisan este archivo**. Ya pasó una vez. Antes de un generador que escriba en la raíz, copiar `CLAUDE.md` a un lado y comparar el hash después.
+
+### Skills de diseño instaladas
+
+El proyecto tiene skills de terceros para trabajar la interfaz. **No están en git** (~6 MB de herramientas, no código de la app); `skills-lock.json` sí, y fija las versiones exactas. Para reinstalarlas en una máquina nueva:
+
+```bash
+npx skills@latest add emilkowalski/skills   # 9 skills de animación y craft
+npx impeccable install                       # 1 skill con 23 comandos de diseño
+```
+
+| Skill | Para qué |
+|---|---|
+| `emil-design-eng` | Criterio de pulido y detalles invisibles |
+| `apple-design` | Movimiento físico, gestos, materiales |
+| `animate` · `review-animations` · `improve-animations` | Construir, revisar y auditar animaciones |
+| `find-animation-opportunities` | Dónde falta movimiento y dónde sobra |
+| `animation-vocabulary` | Cómo se llama un efecto |
+| `pick-ui-library` | Qué librería usar para cada cosa |
+| `prototype` | Varias versiones de una pantalla para comparar |
+| `impeccable` | `/impeccable audit`, `critique`, `polish`, `distill`… |
 
 Mantener el tono: conciso, decisiones y reglas — no tutorial ni listado de archivos que se descubre leyendo el repo.
 
