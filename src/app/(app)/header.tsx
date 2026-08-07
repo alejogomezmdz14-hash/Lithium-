@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Isotipo } from "@/components/logo";
+import { BotonDeTema } from "@/components/tema";
 import { createClient } from "@/lib/supabase/server";
 
 import { BotonSalir } from "./boton-salir";
@@ -31,11 +32,12 @@ export async function Header() {
         {esSuper ? (
           <Link
             href="/usuarios"
-            className="flex h-12 items-center px-2 text-[0.8125rem] font-medium text-primary-text"
+            className="flex h-11 items-center px-2 text-[0.8125rem] font-medium text-muted-foreground"
           >
             Usuarias
           </Link>
         ) : null}
+        <BotonDeTema />
         <BotonSalir />
       </div>
     </header>

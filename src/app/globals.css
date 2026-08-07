@@ -2,54 +2,114 @@
 
 /* ---------------------------------------------------------------------------
    Lithium — tokens. Ver CLAUDE.md §9.1.
-   La app es DARK PERMANENTE: no hay theme claro, así que los valores viven
-   directo en :root. La clase .dark se replica solo para que los componentes de
-   shadcn que la consultan se comporten igual.
-   Nunca poner un hex suelto en un componente — siempre un token de acá.
+
+   DOS TEMAS. Los valores viven en `:root` (claro) y se pisan en `.dark`.
+   `@theme inline` apunta a esas variables, así el cambio de tema es instantáneo
+   y no obliga a recompilar nada.
+
+   Los colores NO son los mismos en los dos temas, y no es capricho: el cian
+   #35C4D4 sobre blanco da 1,9:1 — ilegible. Cada tema tiene su propia versión
+   de cada señal, elegida para que el contraste funcione sobre SU fondo.
+
+   Nunca poner un hex suelto en un componente: siempre un token de acá.
 --------------------------------------------------------------------------- */
 
+:root {
+  color-scheme: light;
+
+  /* --- superficies (claro) ------------------------------------------------ */
+  /* Gris muy claro de canvas y tarjetas BLANCAS encima: es lo que da el aire
+     del referente. Al revés —canvas blanco y tarjeta gris— la pantalla se
+     ensucia y las tarjetas parecen apagadas. */
+  --fondo: #f4f4f6;
+  --texto: #0d0d10;
+  --tarjeta: #ffffff;
+  --elevado: #f4f4f6;
+  --borde: #e6e6ea;
+
+  --texto-suave: #62626b; /* 5.9:1 sobre la tarjeta */
+  --texto-tenue: #8e8e97; /* adorno: separadores, placeholders */
+  --texto-apagado: #b4b4bb;
+
+  /* --- marca -------------------------------------------------------------- */
+  --marca: #1d63d2; /* relleno de botones, blanco encima */
+  --sobre-marca: #ffffff;
+  --marca-texto: #1550b4; /* links y texto: 6,1:1 sobre blanco */
+  --marca-tinte: #e8effc; /* fondo de los tiles de acceso */
+
+  /* --- señales ------------------------------------------------------------ */
+  --peligro: #c62828; /* 5,9:1 sobre blanco */
+  --destructivo: #c62828;
+  --sobre-destructivo: #ffffff;
+  --atencion: #a45c00; /* naranja legible: 4,8:1 */
+  --exito: #0f7a4d; /* verde legible: 4,9:1 */
+  --scrim: rgb(0 0 0 / 0.4);
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* Tintado, no gris neutro: el ramp perfectamente neutro es firma de theme
+     generado. */
+  --fondo: #0a0a0c;
+  --texto: #fafafa;
+  --tarjeta: #1c1c20;
+  --elevado: #26262b;
+  --borde: #2e2e35;
+
+  --texto-suave: #a3a3a3;
+  --texto-tenue: #6e6e6e;
+  --texto-apagado: #5a5a5a;
+
+  --marca: #1d63d2;
+  --sobre-marca: #ffffff;
+  --marca-texto: #35c4d4; /* cian: 9,4:1 sobre el canvas oscuro */
+  --marca-tinte: #0f2440;
+
+  --peligro: #fca5a5;
+  --destructivo: #f87171;
+  --sobre-destructivo: #0a0a0c;
+  --atencion: #f59e0b;
+  --exito: #34d399;
+  --scrim: rgb(0 0 0 / 0.6);
+}
+
 @theme inline {
-  /* --- superficies ------------------------------------------------------- */
-  /* Tintado, no gris neutro: el ramp perfectamente neutro es firma de theme generado */
-  --color-background: #0a0a0c;
-  --color-foreground: #fafafa;
+  --color-background: var(--fondo);
+  --color-foreground: var(--texto);
 
-  --color-card: #1c1c20; /* nivel 1: filas, tiles */
-  --color-card-foreground: #fafafa;
-  --color-surface-raised: #26262b; /* nivel 2: hover, fila levantada, sheet */
-  --color-popover: #26262b;
-  --color-popover-foreground: #fafafa;
+  --color-card: var(--tarjeta);
+  --color-card-foreground: var(--texto);
+  --color-surface-raised: var(--elevado);
+  --color-popover: var(--tarjeta);
+  --color-popover-foreground: var(--texto);
 
-  --color-border: #2e2e35; /* solo contenedores que agrupan y sheets */
-  --color-input: #2e2e35;
+  --color-border: var(--borde);
+  --color-input: var(--borde);
 
-  /* --- texto ------------------------------------------------------------- */
-  --color-muted: #26262b;
-  --color-muted-foreground: #a3a3a3; /* metadata legible — 7.8:1 */
-  --color-muted-subtle: #6e6e6e; /* adorno real: separadores ·, placeholders */
-  --color-disabled-foreground: #5a5a5a;
+  --color-muted: var(--elevado);
+  --color-muted-foreground: var(--texto-suave);
+  --color-muted-subtle: var(--texto-tenue);
+  --color-disabled-foreground: var(--texto-apagado);
 
-  /* --- acento de marca (§9.0.2) ------------------------------------------ */
-  /* primary es SOLO relleno: 3.5:1, prohibido para texto sobre el canvas */
-  --color-primary: #1d63d2;
-  --color-primary-foreground: #ffffff; /* 5.3:1 sobre primary */
-  --color-primary-text: #35c4d4; /* cian: links, tab activo, glyphs — 9.4:1 */
-  --color-primary-tint: #0f2440; /* fondo de círculos de acción */
-  --color-ring: #35c4d4;
+  --color-primary: var(--marca);
+  --color-primary-foreground: var(--sobre-marca);
+  --color-primary-text: var(--marca-texto);
+  --color-primary-tint: var(--marca-tinte);
+  --color-ring: var(--marca);
 
-  --color-secondary: #26262b;
-  --color-secondary-foreground: #fafafa;
-  --color-accent: #26262b;
-  --color-accent-foreground: #fafafa;
+  --color-secondary: var(--elevado);
+  --color-secondary-foreground: var(--texto);
+  --color-accent: var(--elevado);
+  --color-accent-foreground: var(--texto);
 
-  /* --- señales (§9.2, §9.3) ---------------------------------------------- */
-  /* danger y destructive son rojos DISTINTOS a propósito: urgencia vs borrar */
-  --color-danger: #fca5a5; /* único rojo de urgencia — 10.4:1 */
-  --color-danger-surface: #2a1215;
-  --color-destructive: #f87171; /* borrar — 7.2:1 */
-  --color-destructive-foreground: #0a0a0c;
-  --color-warning: #f59e0b; /* "Ojo" y "pagó tarde" — 9.2:1 */
-  --color-success: #34d399; /* "Confiable" y el ✓ — 10.3:1. NUNCA en un monto */
+  /* peligro y destructivo son rojos DISTINTOS a propósito: urgencia vs borrar */
+  --color-danger: var(--peligro);
+  --color-destructive: var(--destructivo);
+  --color-destructive-foreground: var(--sobre-destructivo);
+  --color-warning: var(--atencion);
+  --color-success: var(--exito);
+  --color-scrim: var(--scrim);
 
   /* --- radius: clase de objeto, nunca uniforme --------------------------- */
   --radius-sm: 0.5rem; /* 8px  — skeleton */
@@ -61,22 +121,18 @@
   --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
 }
 
-.dark {
-  color-scheme: dark;
-}
-
 @layer base {
-  html {
-    color-scheme: dark;
-  }
-
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
+    background-color: var(--fondo);
+    color: var(--texto);
     font-family: var(--font-sans);
-    /* El cuerpo va en 500, nunca 400: en dark el 400 adelgaza y se ve barato */
     font-weight: 500;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* En claro el 500 engorda: el peso óptico correcto depende del tema. */
+  :root body {
+    font-weight: 450;
   }
 
   /* Toda cifra es tabular — montos, fechas (12/8) y contadores (3/6).
@@ -100,5 +156,11 @@
     -webkit-user-select: none;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* En claro las tarjetas necesitan un borde de 1px para despegarse del canvas;
+     en oscuro las separa el escalón de superficie y el borde sobraría. */
+  :root .bg-card {
+    border: 1px solid var(--borde);
   }
 }
